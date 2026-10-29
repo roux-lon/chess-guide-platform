@@ -1,7 +1,5 @@
 # Chess Coach: project kit
 
-Everything you need to start building with Claude Code.
-
 ## What's inside
 
 ```
