@@ -1,0 +1,37 @@
+@import "tailwindcss";
+
+/* Design tokens. Keep in sync with src/ui/theme.ts. */
+@theme {
+  --color-brand: #6d4aff;
+  --color-brand-dark: #4b2fd1;
+  --color-surface: #ffffff;
+  --color-page: #f4f1ff;
+  --color-ink: #1e1b3a;
+  --color-good: #2fb36b;
+  --color-warn: #f5a623;
+  --color-danger: #e5484d;
+  --color-info: #3b82f6;
+  --radius-card: 1.25rem;
+  --radius-button: 0.9rem;
+  --radius-board: 0.75rem;
+}
+
+body {
+  background: var(--color-page);
+  color: var(--color-ink);
+  font-family: ui-rounded, "Nunito", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+/* Square highlights set through <Board highlights>. */
+cg-board square.hl-good {
+  background: rgba(47, 179, 107, 0.5);
+}
+cg-board square.hl-warn {
+  background: rgba(245, 166, 35, 0.55);
+}
+cg-board square.hl-danger {
+  background: rgba(229, 72, 77, 0.5);
+}
+cg-board square.hl-info {
+  background: rgba(59, 130, 246, 0.45);
+}

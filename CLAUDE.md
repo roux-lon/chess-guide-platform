@@ -7,13 +7,14 @@ Build prompts, one per phase: `docs/prompts/`
 
 ## Commands
 
-(Placeholders until phase 1 scaffolds the project. Update this section then.)
-
 - Dev server: `npm run dev`
-- Typecheck: `npm run typecheck`
+- Typecheck: `npm run typecheck` (`tsc --noEmit`)
 - Lint: `npm run lint`
-- Unit tests: `npm run test`
-- Static build: `npm run build`
+- Unit tests: `npm run test` (Vitest, runs once; config in `vitest.config.mts`)
+- Static build: `npm run build` (writes the static site to `out/`)
+- Passcode hash: `node scripts/hash-passcode.mjs "word"`, then put the output in `.env.local` as `NEXT_PUBLIC_PASSCODE_HASH` (restart dev / rebuild after changing it)
+
+Notes: chessground (board) is imported only in `src/ui/Board.tsx`; chess.js only in `src/rules/`. `engine/` does not import `rules/`: the random bot gets its legal-move list injected from `features/play/createEngine.ts`.
 
 ## Architecture
 
