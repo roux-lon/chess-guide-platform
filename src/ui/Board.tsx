@@ -39,6 +39,13 @@ export interface BoardProps {
   lastMove?: { from: string; to: string };
   /** Side whose king is in check, if any. */
   check?: Side;
+  /**
+   * Let pieces be dropped on any square, so the caller can explain why a move is not allowed
+   * (lessons do this). When off, the board silently refuses anything not in legalDests.
+   */
+  freeMoves?: boolean;
+  /** Show dots on the squares a selected piece can move to. On by default. */
+  showLegalDots?: boolean;
 }
 
 /**
@@ -56,6 +63,8 @@ export function Board({
   arrows,
   lastMove,
   check,
+  freeMoves = false,
+  showLegalDots = true,
 }: BoardProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const apiRef = useRef<Api | null>(null);
@@ -108,10 +117,10 @@ export function Board({
       selected: undefined,
       viewOnly: false,
       movable: {
-        free: false,
+        free: freeMoves,
         color: movableColor,
         dests: (legalDests ?? new Map()) as Map<Key, Key[]>,
-        showDests: true,
+        showDests: showLegalDots,
         events: {
           after: (from, to) => onMoveRef.current?.(from, to),
         },

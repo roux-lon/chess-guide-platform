@@ -26,3 +26,5 @@ export {
   staticExchange,
 } from "./analysis";
 export type { HangingInfo, PieceOnSquare } from "./analysis";
+export { explainIllegalMove } from "./illegal";
+export type { IllegalReason } from "./illegal";
