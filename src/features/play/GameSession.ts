@@ -358,6 +358,13 @@ export class GameSession {
     void this.maybeBotMove();
   }
 
+  /** After the bot failed to move, asks it again. Does nothing if there is no problem to retry. */
+  retryBot(): void {
+    if (!this.error || this.botThinking) return;
+    this.error = undefined;
+    void this.maybeBotMove();
+  }
+
   private async maybeBotMove(): Promise<void> {
     if (this.isOver() || this.game.turn() === this.playerColor) return;
     const token = ++this.token;

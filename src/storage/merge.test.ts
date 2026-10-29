@@ -56,6 +56,23 @@ describe("mergeDiaries", () => {
     expect(merged.updatedAt).toBe("2026-06-01T00:00:00.000Z");
   });
 
+  it("keeps the larger XP and the streak that was active more recently", () => {
+    const base = diary({ xp: 100, streak: { current: 2, best: 4, lastDay: "2026-03-01" } });
+    const incoming = diary({ xp: 250, streak: { current: 5, best: 5, lastDay: "2026-03-09" } });
+    const merged = mergeDiaries(base, incoming);
+    expect(merged.xp).toBe(250);
+    expect(merged.streak).toEqual({ current: 5, best: 5, lastDay: "2026-03-09" });
+
+    const reverse = mergeDiaries(incoming, base);
+    expect(reverse.streak.lastDay).toBe("2026-03-09");
+    // The best streak is never lost, whichever diary it came from.
+    const withBigBest = mergeDiaries(
+      diary({ streak: { current: 1, best: 12, lastDay: "2026-03-02" } }),
+      diary({ streak: { current: 3, best: 3, lastDay: "2026-03-09" } }),
+    );
+    expect(withBigBest.streak).toEqual({ current: 3, best: 12, lastDay: "2026-03-09" });
+  });
+
   it("keeps an unfinished game, preferring the base one", () => {
     const active = (id: string) => ({
       id,

@@ -97,7 +97,7 @@ describe("recording a game", () => {
     await store.recordGame(finished(), { activeGame: null });
     expect(file.writes).toHaveLength(1);
     const saved = JSON.parse(file.content);
-    expect(saved.version).toBe(2);
+    expect(saved.version).toBe(3);
     expect(saved.games[0]).toMatchObject({ id: "game-1", result: "win", playerColor: "white" });
     expect(saved.games[0].coachLog).toHaveLength(2);
     expect(saved.mistakeCounts).toEqual({ missed_threat: 1 });

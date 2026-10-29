@@ -25,6 +25,10 @@ export function mergeDiaries(base: Diary, incoming: Diary): Diary {
   }
 
   const activeGame = base.activeGame ?? incoming.activeGame;
+
+  // Rewards: keep the larger XP, and the streak that was active more recently.
+  const newer = (incoming.streak.lastDay ?? "") > (base.streak.lastDay ?? "") ? incoming.streak : base.streak;
+  const streak = { ...newer, best: Math.max(base.streak.best, incoming.streak.best, newer.current) };
   return {
     ...base,
     ...(activeGame ? { activeGame } : {}),
@@ -32,5 +36,7 @@ export function mergeDiaries(base: Diary, incoming: Diary): Diary {
     lessons,
     games,
     mistakeCounts,
+    xp: Math.max(base.xp, incoming.xp),
+    streak,
   };
 }

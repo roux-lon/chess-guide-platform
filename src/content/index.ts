@@ -42,3 +42,6 @@ export {
   REVIEW_TEXT,
   SUGGESTION_TEXT,
 } from "./progressText";
+export { REWARD_TEXT, XP_PER_LEVEL, XP_RULES } from "./rewards";
+export { HOME_TEXT } from "./home";
+export { ERROR_TEXT } from "./errors";

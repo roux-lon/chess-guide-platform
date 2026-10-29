@@ -9,7 +9,9 @@ import {
   serializeDiary,
   summarizeDiary,
 } from "@/storage";
+import { localDay } from "@/lib/date";
 import { countMistakes } from "../games/mistakes";
+import { addActivity, xpForGame, xpForLesson } from "../rewards/rewards";
 import type {
   ActiveGameRecord,
   Diary,
@@ -130,16 +132,22 @@ export class ProgressStore {
 
   // ---- changing the diary ----
 
-  /** Marks a lesson done and saves right away. Finishing a lesson twice keeps the first date. */
+  /**
+   * Marks a lesson done and saves right away. Finishing a lesson twice keeps the first date,
+   * and only the first time earns XP. Either way it counts as a day of learning for the streak.
+   */
   async completeLesson(id: string): Promise<void> {
     await this.load();
     if (!this.ready) return;
     const when = this.now().toISOString();
+    const firstTime = this.diary.lessons[id]?.status !== "done";
     await this.commit(
       {
         ...this.diary,
         updatedAt: when,
         lessons: { ...this.diary.lessons, [id]: this.diary.lessons[id] ?? { status: "done", completedAt: when } },
+        xp: this.diary.xp + (firstTime ? xpForLesson() : 0),
+        streak: addActivity(this.diary.streak, localDay(this.now())),
       },
       { immediate: true },
     );
@@ -164,6 +172,10 @@ export class ProgressStore {
   async recordGame(record: GameRecord, options: { activeGame: ActiveGameRecord | null }): Promise<boolean> {
     await this.load();
     if (!this.ready) return false;
+    const earlier = this.diary.games.find((g) => g.id === record.id);
+    // XP is paid once, when a game becomes finished. An abandoned game that is later finished
+    // pays then; saving a finished game again pays nothing more.
+    const newlyFinished = record.result !== "abandoned" && (!earlier || earlier.result === "abandoned");
     const games = [...this.diary.games.filter((g) => g.id !== record.id), record].sort((a, b) =>
       a.playedAt.localeCompare(b.playedAt),
     );
@@ -175,6 +187,8 @@ export class ProgressStore {
         updatedAt: this.now().toISOString(),
         games,
         mistakeCounts: countMistakes(games),
+        xp: this.diary.xp + (newlyFinished ? xpForGame(record.result) : 0),
+        streak: addActivity(this.diary.streak, localDay(this.now())),
         ...(options.activeGame ? { activeGame: options.activeGame } : {}),
       },
       { immediate: true },

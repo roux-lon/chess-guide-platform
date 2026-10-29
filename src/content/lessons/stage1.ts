@@ -126,6 +126,7 @@ export const STAGE_1_LESSONS: Lesson[] = [
     title: "The pawn",
     summary: "The little soldier who only walks forward.",
     icon: "♙",
+    personality: "I'm a tiny soldier! I only walk forward, one careful step at a time. But if I make it all the way across the board, something magical happens.",
     body: [
       { type: "heading", text: "The pawn: a tiny soldier" },
       {
@@ -231,6 +232,7 @@ export const STAGE_1_LESSONS: Lesson[] = [
     title: "The rook",
     summary: "The castle that slides in straight lines.",
     icon: "♖",
+    personality: "I'm the Rook, a sturdy castle! I zoom in straight lines, as far as nothing blocks me.",
     body: [
       { type: "heading", text: "The rook: the castle" },
       {
@@ -320,6 +322,7 @@ export const STAGE_1_LESSONS: Lesson[] = [
     title: "The bishop",
     summary: "Slides diagonally and stays on one color.",
     icon: "♗",
+    personality: "I'm the Bishop! I love diagonals, and I always stay on the same colour of square. Zoom, zoom, slanted!",
     body: [
       { type: "heading", text: "The bishop: the diagonal slider" },
       {
@@ -394,6 +397,7 @@ export const STAGE_1_LESSONS: Lesson[] = [
     title: "The queen",
     summary: "The strongest piece: rook and bishop in one.",
     icon: "♕",
+    personality: "I'm the Queen, the strongest piece! I can glide like a rook or a bishop, whichever I fancy.",
     body: [
       { type: "heading", text: "The queen: the strongest piece" },
       {
@@ -472,6 +476,7 @@ export const STAGE_1_LESSONS: Lesson[] = [
     title: "The knight",
     summary: "The horse that jumps in an L-shape.",
     icon: "♘",
+    personality: "I'm the Knight! I hop in an L-shape, and I'm the only one allowed to jump over other pieces.",
     body: [
       { type: "heading", text: "The knight: the jumping horse" },
       {
@@ -560,6 +565,7 @@ export const STAGE_1_LESSONS: Lesson[] = [
     title: "The king",
     summary: "The most important piece: take small, careful steps.",
     icon: "♔",
+    personality: "I'm the King. I move slowly, one step at a time, but if I'm trapped, the game is over. Look after me!",
     body: [
       { type: "heading", text: "The king: the piece you must protect" },
       {

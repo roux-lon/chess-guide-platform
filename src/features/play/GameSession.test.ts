@@ -86,6 +86,26 @@ describe("GameSession", () => {
     expect(snap.moves).toHaveLength(1);
   });
 
+  it("lets the player ask the bot to try again after a problem", async () => {
+    const session = newSession([{ from: "a1", to: "a8" }, { from: "e7", to: "e5" }]);
+    session.attemptMove("e2", "e4");
+    await settle();
+    expect(session.getSnapshot().error).toBeTruthy();
+    session.retryBot();
+    expect(session.getSnapshot().error).toBeUndefined();
+    await settle();
+    const snap = session.getSnapshot();
+    expect(snap.moves.map((m) => m.san)).toEqual(["e4", "e5"]);
+    expect(snap.error).toBeUndefined();
+  });
+
+  it("does nothing when asked to retry and nothing went wrong", async () => {
+    const session = newSession([{ from: "e7", to: "e5" }]);
+    session.retryBot();
+    await settle();
+    expect(session.getSnapshot().moves).toHaveLength(0);
+  });
+
   it("passes the level to the engine and reports it", () => {
     const engine = scriptedEngine([]);
     const session = new GameSession({ engine, level: 3, botDelayMs: 0 });

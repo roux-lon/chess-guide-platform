@@ -3,6 +3,9 @@
 import { REVIEW_TEXT, RESULT_TEXT } from "@/content";
 import type { Review, ReviewMistake } from "@/features/games";
 import { Board } from "./Board";
+import { moodLabel, resultMood } from "@/features/mascot";
+import { Confetti } from "./Confetti";
+import { Mascot } from "./Mascot";
 
 const button = "rounded-[var(--radius-button)] px-5 py-3 text-lg font-bold shadow transition disabled:opacity-50";
 const primary = `${button} bg-brand text-white hover:bg-brand-dark`;
@@ -33,6 +36,13 @@ export function ReviewScreen({ review, onPractice, onNewGame }: Props) {
         aria-label="Result"
         className={`space-y-1 rounded-[var(--radius-card)] p-6 shadow ${HEADLINE_TONE[record.result]}`}
       >
+        <Confetti run={record.result === "win"} />
+        <Mascot
+          mood={resultMood(record.result)}
+          size={88}
+          label={moodLabel(resultMood(record.result))}
+          className="float-right ml-3"
+        />
         <h1 className="text-3xl font-extrabold">{result.headline}</h1>
         <p className="text-lg">{result.detail}</p>
         <p className="text-sm text-ink/70">
@@ -45,7 +55,11 @@ export function ReviewScreen({ review, onPractice, onNewGame }: Props) {
         <h2 className="text-2xl font-extrabold text-brand">Looking back</h2>
         {mistakes.length === 0 ? (
           <p className="rounded-[var(--radius-card)] bg-surface p-5 text-lg shadow">
-            {record.coachingMode === "off" ? REVIEW_TEXT.noMistakesOff : REVIEW_TEXT.noMistakes}
+            {record.coachingMode === "off"
+              ? REVIEW_TEXT.noMistakesOff
+              : record.result === "abandoned"
+                ? REVIEW_TEXT.noMistakesLeftEarly
+                : REVIEW_TEXT.noMistakes}
           </p>
         ) : (
           <>

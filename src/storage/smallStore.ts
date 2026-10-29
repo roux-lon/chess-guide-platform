@@ -7,7 +7,16 @@ export interface KeyValueStore {
 
 export const SMALL_KEY = "chess-coach.small";
 
+/** Per-device choices about the playful extras. Sound starts off; celebrations start on. */
+export interface Prefs {
+  sound: boolean;
+  confetti: boolean;
+}
+
+export const DEFAULT_PREFS: Prefs = { sound: false, confetti: true };
+
 interface SmallData {
+  prefs?: Partial<Prefs>;
   /** Name of the diary file the person connected, so we can say so before the browser checks. */
   connectedFile?: string;
   /** The person said no to bringing old browser progress into the file. */
@@ -44,6 +53,17 @@ export class SmallStore {
     } catch {
       // Storage is blocked or full: these are only hints, so carry on without them.
     }
+  }
+
+  getPrefs(): Prefs {
+    const saved = this.read().prefs;
+    return {
+      sound: typeof saved?.sound === "boolean" ? saved.sound : DEFAULT_PREFS.sound,
+      confetti: typeof saved?.confetti === "boolean" ? saved.confetti : DEFAULT_PREFS.confetti,
+    };
+  }
+  setPrefs(patch: Partial<Prefs>): void {
+    this.update({ prefs: { ...this.getPrefs(), ...patch } });
   }
 
   getConnectedFile(): string | undefined {

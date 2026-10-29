@@ -1,7 +1,7 @@
 // The diary: everything the app remembers. Shape follows PLAN.md section 4 and is
 // versioned so it can be migrated. Changing it needs a version bump and a migration.
 
-export const DIARY_VERSION = 2;
+export const DIARY_VERSION = 3;
 
 /** How much the coach says during a game. */
 export type CoachingMode = "full" | "quiet" | "off";
@@ -63,6 +63,16 @@ export interface DiarySettings {
   coachingMode: CoachingMode;
 }
 
+/** The daily streak: how many days in a row something was learned or played (version 3). */
+export interface StreakRecord {
+  /** Days in a row, counted up to `lastDay`. */
+  current: number;
+  /** The longest streak so far. */
+  best: number;
+  /** The last day with activity, as the person's own calendar day: YYYY-MM-DD. Null if none yet. */
+  lastDay: string | null;
+}
+
 export interface Diary {
   version: typeof DIARY_VERSION;
   /** ISO date of the last save. */
@@ -74,7 +84,12 @@ export interface Diary {
   mistakeCounts: Record<string, number>;
   /** The unfinished game, if the person left one (version 2). */
   activeGame?: ActiveGameRecord;
+  /** Experience points earned from lessons and games (version 3). */
+  xp: number;
+  streak: StreakRecord;
 }
+
+export const EMPTY_STREAK: StreakRecord = { current: 0, best: 0, lastDay: null };
 
 export function createEmptyDiary(now: Date = new Date()): Diary {
   return {
@@ -84,6 +99,8 @@ export function createEmptyDiary(now: Date = new Date()): Diary {
     lessons: {},
     games: [],
     mistakeCounts: {},
+    xp: 0,
+    streak: { ...EMPTY_STREAK },
   };
 }
 

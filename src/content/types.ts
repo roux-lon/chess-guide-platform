@@ -129,6 +129,8 @@ export interface Lesson {
   summary: string;
   /** A symbol for the lesson map card. */
   icon: string;
+  /** The piece speaking in its own voice, shown as a speech bubble before the lesson. Optional. */
+  personality?: string;
   body: Block[];
   /** Three to six exercises. */
   exercises: Exercise[];

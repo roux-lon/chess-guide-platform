@@ -1,0 +1,6 @@
+# Used by Cloudflare Pages and Netlify. The offline helper must never be cached itself,
+# or a new version could not be noticed.
+/sw.js
+  Cache-Control: no-cache
+/engine/*.wasm
+  Content-Type: application/wasm

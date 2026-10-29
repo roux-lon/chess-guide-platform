@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import type { Mood } from "@/features/mascot";
 import type { CoachLogEntry, HintView } from "@/features/play";
+import { Mascot } from "./Mascot";
 
 interface Props {
   open: boolean;
@@ -11,6 +13,8 @@ interface Props {
   canRequestHint: boolean;
   hintLoading: boolean;
   onRequestHint: () => void;
+  /** How Pip looks. */
+  mood?: Mood;
 }
 
 /** Slide-out panel with the coach's comments and hints. It only displays what it is given. */
@@ -22,6 +26,7 @@ export function CoachDrawer({
   canRequestHint,
   hintLoading,
   onRequestHint,
+  mood = "happy",
 }: Props) {
   const closeRef = useRef<HTMLButtonElement>(null);
   const newestRef = useRef<HTMLLIElement>(null);
@@ -57,7 +62,10 @@ export function CoachDrawer({
       }`}
     >
       <header className="flex items-center justify-between border-b border-ink/10 p-4">
-        <h2 className="text-xl font-extrabold text-brand">Your coach</h2>
+        <div className="flex items-center gap-3">
+          <Mascot mood={mood} size={48} />
+          <h2 className="text-xl font-extrabold text-brand">Your coach</h2>
+        </div>
         <button
           ref={closeRef}
           type="button"
@@ -70,7 +78,7 @@ export function CoachDrawer({
 
       <div className="flex-1 space-y-5 overflow-y-auto p-4">
         <section aria-label="Hints">
-          <h3 className="mb-2 text-sm font-bold uppercase tracking-wide text-ink/60">Hints</h3>
+          <h3 className="mb-2 text-sm font-bold uppercase tracking-wide text-ink/70">Hints</h3>
           {hints.length === 0 && !hintLoading && (
             <p className="text-sm text-ink/70">
               Not sure what to do? Press the button and I will give you a small nudge. Each press
@@ -102,7 +110,7 @@ export function CoachDrawer({
         </section>
 
         <section aria-label="Move comments">
-          <h3 className="mb-2 text-sm font-bold uppercase tracking-wide text-ink/60">
+          <h3 className="mb-2 text-sm font-bold uppercase tracking-wide text-ink/70">
             What happened
           </h3>
           {log.length === 0 ? (
@@ -120,7 +128,7 @@ export function CoachDrawer({
                       newest ? "bg-brand/15 ring-2 ring-brand" : "bg-page"
                     }`}
                   >
-                    <p className="mb-1 text-xs font-bold uppercase tracking-wide text-ink/60">
+                    <p className="mb-1 text-xs font-bold uppercase tracking-wide text-ink/70">
                       Move {Math.ceil(entry.ply / 2)} · {entry.side === "you" ? "You" : "Bot"} ·{" "}
                       <span className="font-mono normal-case">{entry.moveSan}</span>
                     </p>

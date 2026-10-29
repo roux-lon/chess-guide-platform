@@ -35,6 +35,7 @@ export const MILESTONE_TEXT = {
 
 export const REVIEW_TEXT = {
   noMistakes: "No clear mistakes in this game. Nicely played!",
+  noMistakesLeftEarly: "There was too little of this game to look for mistakes. Next time, play a little longer.",
   noMistakesOff: "Coaching was off, so I could not look for mistakes this time.",
   intro: "Here are the moments that cost you the most. You can try each one again.",
 } as const;

@@ -40,7 +40,7 @@ export function DashboardView({
         <div className={card}>
           <h2 className="text-xl font-extrabold">Lessons</h2>
           <p className="text-3xl font-extrabold text-brand">
-            {lessons.done} <span className="text-lg font-bold text-ink/60">of {lessons.total}</span>
+            {lessons.done} <span className="text-lg font-bold text-ink/70">of {lessons.total}</span>
           </p>
           <div
             role="progressbar"
@@ -64,7 +64,7 @@ export function DashboardView({
           ) : (
             <>
               <p className="text-3xl font-extrabold text-brand">
-                {games.finished} <span className="text-lg font-bold text-ink/60">finished</span>
+                {games.finished} <span className="text-lg font-bold text-ink/70">finished</span>
               </p>
               <ul className="flex flex-wrap gap-2 text-sm font-semibold">
                 <li className="rounded-full bg-good/25 px-3 py-1">{games.wins} won</li>
@@ -114,7 +114,7 @@ export function DashboardView({
 
             {mistakes.recentGames.length > 0 && (
               <div>
-                <h3 className="mb-1 text-sm font-bold uppercase tracking-wide text-ink/60">
+                <h3 className="mb-1 text-sm font-bold uppercase tracking-wide text-ink/70">
                   Mistakes in your latest games
                 </h3>
                 <ol className="flex h-24 items-end gap-1" aria-label="Mistakes per game, oldest first">
@@ -130,7 +130,7 @@ export function DashboardView({
                     </li>
                   ))}
                 </ol>
-                <p className="mt-1 text-xs text-ink/60">Green: won. Red: lost. Blue: drawn.</p>
+                <p className="mt-1 text-xs text-ink/70">Green: won. Red: lost. Blue: drawn.</p>
               </div>
             )}
           </>

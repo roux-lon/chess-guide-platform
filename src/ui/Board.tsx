@@ -81,7 +81,8 @@ export function Board({
       coordinates: true,
       autoCastle: true,
       highlight: { lastMove: true, check: true },
-      animation: { enabled: true, duration: 200 },
+      // People who ask for less motion get pieces that jump instead of slide.
+      animation: { enabled: !window.matchMedia("(prefers-reduced-motion: reduce)").matches, duration: 200 },
       draggable: { showGhost: true },
       premovable: { enabled: false },
       drawable: { enabled: false },

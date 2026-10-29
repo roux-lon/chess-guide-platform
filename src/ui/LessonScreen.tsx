@@ -4,7 +4,12 @@ import Link from "next/link";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { LESSONS, LessonSession, getLesson, lessonAfter, lessonStates } from "@/features/lessons";
 import type { DotState } from "@/features/lessons";
+import { lessonMood, moodLabel } from "@/features/mascot";
 import { getProgressStore, waitingForPerson } from "@/features/progress";
+import { Confetti } from "./Confetti";
+import { Mascot } from "./Mascot";
+import { playSound } from "./sound";
+import { usePreferences } from "./usePreferences";
 import { ExerciseView } from "./ExerciseView";
 import { Inline, RichText } from "./RichText";
 import { useProgress } from "./useProgress";
@@ -92,13 +97,24 @@ function LessonRunner({ lessonId }: { lessonId: string }) {
   const session = useLessonSession(lessonId);
   const snap = useSyncExternalStore(session.subscribe, session.getSnapshot, session.getSnapshot);
   const { snapshot } = useProgress();
+  const { prefs } = usePreferences();
   const { lesson, runner } = snap;
   const next = lessonAfter(lesson.id);
+
+  // A small sound when an answer is checked, only if sound is on.
+  const status = runner?.status;
+  useEffect(() => {
+    if (status === "correct") playSound("correct", prefs.sound);
+    else if (status === "wrong" || status === "illegal") playSound("wrong", prefs.sound);
+  }, [status, prefs.sound]);
+  useEffect(() => {
+    if (snap.phase === "complete") playSound("win", prefs.sound);
+  }, [snap.phase, prefs.sound]);
 
   const header = (
     <header className="flex flex-wrap items-center justify-between gap-3">
       <div>
-        <p className="text-sm font-bold uppercase tracking-wide text-ink/60">Stage {lesson.stage}</p>
+        <p className="text-sm font-bold uppercase tracking-wide text-ink/70">Stage {lesson.stage}</p>
         <h1 className="text-3xl font-extrabold text-brand">
           <span aria-hidden="true">{lesson.icon} </span>
           {lesson.title}
@@ -114,6 +130,17 @@ function LessonRunner({ lessonId }: { lessonId: string }) {
     return (
       <main className="mx-auto max-w-2xl space-y-6 p-4">
         {header}
+        {lesson.personality && (
+          <div className="flex items-center gap-3">
+            <span className="text-5xl" aria-hidden="true">
+              {lesson.icon}
+            </span>
+            <p className="relative rounded-[var(--radius-card)] bg-surface p-4 text-lg font-semibold shadow">
+              <span className="sr-only">{lesson.title} says: </span>
+              &ldquo;{lesson.personality}&rdquo;
+            </p>
+          </div>
+        )}
         <RichText blocks={lesson.body} />
         <button type="button" onClick={() => session.start()} className={primary}>
           Start the exercises
@@ -126,14 +153,13 @@ function LessonRunner({ lessonId }: { lessonId: string }) {
     return (
       <main className="mx-auto max-w-2xl space-y-6 p-4">
         {header}
+        <Confetti run />
         <section
           aria-label="Lesson complete"
           className="space-y-4 rounded-[var(--radius-card)] bg-surface p-8 text-center shadow-lg"
         >
-          <p className="text-5xl" aria-hidden="true">
-            🎉
-          </p>
-          <h2 className="text-3xl font-extrabold text-good">Lesson complete!</h2>
+          <Mascot mood="cheering" size={120} label={moodLabel("cheering")} className="mx-auto" />
+          <h2 className="text-3xl font-extrabold text-good-dark">Lesson complete!</h2>
           <p className="text-lg">You finished &quot;{lesson.title}&quot;. Great work!</p>
           {snapshot.saveError && (
             <p role="alert" className="rounded-[var(--radius-card)] bg-warn/25 p-3 text-sm">
@@ -196,8 +222,17 @@ function LessonRunner({ lessonId }: { lessonId: string }) {
           aria-live="polite"
           className={`rounded-[var(--radius-card)] p-4 text-lg font-semibold shadow ${FEEDBACK_STYLE[runner.status]}`}
         >
-          {runner.status === "correct" && <span aria-hidden="true">✅ </span>}
-          <Inline text={runner.feedback} />
+          <div className="flex items-start gap-3">
+            <Mascot
+              mood={lessonMood(runner.status, runner.hintLevel > 0)}
+              size={56}
+              className="shrink-0"
+            />
+            <p>
+              {runner.status === "correct" && <span aria-hidden="true">✅ </span>}
+              <Inline text={runner.feedback} />
+            </p>
+          </div>
         </div>
       )}
 

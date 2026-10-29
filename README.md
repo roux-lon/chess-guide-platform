@@ -26,6 +26,10 @@ docs/prompts/
 4. When the phase finishes, check the report, try the app yourself, then commit.
 5. Start a fresh Claude Code session for the next phase. `CLAUDE.md` and `PLAN.md` carry the context, so nothing is lost.
 
+## Where things stand
+
+All seven phases are built. To run it: `npm install`, make a passcode hash (`node scripts/hash-passcode.mjs "word"`) into `.env.local` as `NEXT_PUBLIC_PASSCODE_HASH`, then `npm run dev`. To put it online, follow `docs/DEPLOY.md`. Before and after deploying, use `docs/QA-CHECKLIST.md`.
+
 ## Tips
 
 - For each phase, plan mode (Shift+Tab to cycle modes) is a good way to review the approach before it writes code.

@@ -1,12 +1,18 @@
 "use client";
 
-import { useCallback, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { COACHING_MODE_TEXT, GAME_TEXT } from "@/content";
 import { BOT_LEVELS, LEVELS } from "@/features/play";
 import type { BotLevel, GameSession } from "@/features/play";
 import { describeStatus } from "@/features/play/statusText";
 import { Board } from "./Board";
+import { ERROR_TEXT } from "@/content";
+import { coachMood } from "@/features/mascot";
 import { CoachDrawer } from "./CoachDrawer";
+import { Confetti } from "./Confetti";
+import { MoveInput } from "./MoveInput";
+import { playSound } from "./sound";
+import { usePreferences } from "./usePreferences";
 import { PromotionPicker } from "./PromotionPicker";
 
 const TONE_CLASS = {
@@ -56,6 +62,11 @@ export function GameScreen({
   const [seenCount, setSeenCount] = useState(0);
   const [confirmingResign, setConfirmingResign] = useState(false);
   const coachButtonRef = useRef<HTMLButtonElement>(null);
+  const { prefs } = usePreferences();
+  const playerWon = snap.gameOver && snap.status.outcome === "checkmate" && snap.status.winner === snap.playerColor;
+  useEffect(() => {
+    if (playerWon) playSound("win", prefs.sound);
+  }, [playerWon, prefs.sound]);
 
   const coaching = snap.coachingMode !== "off";
   const status = describeStatus(snap.status, snap.playerColor, snap.botThinking, snap.resigned);
@@ -76,6 +87,7 @@ export function GameScreen({
 
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-col gap-6 p-4 lg:flex-row lg:items-start">
+      <Confetti run={playerWon} />
       <section className="relative w-full max-w-[640px] lg:flex-1">
         <Board
           fen={snap.fen}
@@ -94,6 +106,9 @@ export function GameScreen({
             onCancel={() => session.cancelPromotion()}
           />
         )}
+        <div className="mt-4">
+          <MoveInput onMove={(from, to) => session.attemptMove(from, to)} disabled={!humanCanMove} />
+        </div>
       </section>
 
       <aside className="flex w-full flex-col gap-4 lg:w-80">
@@ -130,7 +145,14 @@ export function GameScreen({
 
         {snap.error && (
           <p role="alert" className="rounded-[var(--radius-card)] bg-danger/15 p-3 text-sm">
-            Something went wrong: {snap.error}
+            {ERROR_TEXT.engineFailed}
+            <button
+              type="button"
+              onClick={() => session.retryBot()}
+              className="mt-2 block rounded-[var(--radius-button)] bg-danger px-3 py-1 font-bold text-white shadow"
+            >
+              {ERROR_TEXT.engineRetry}
+            </button>
           </p>
         )}
 
@@ -232,7 +254,7 @@ export function GameScreen({
           </div>
         )}
         {!practice && !snap.gameOver && (
-          <p className="text-xs text-ink/60">
+          <p className="text-xs text-ink/70">
             Leaving a game keeps it, so you can continue it later from the menu.
           </p>
         )}
@@ -260,7 +282,7 @@ export function GameScreen({
         </div>
 
         <section aria-label="Moves so far" className="rounded-[var(--radius-card)] bg-surface p-4 shadow">
-          <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-ink/60">Moves</h2>
+          <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-ink/70">Moves</h2>
           {snap.moves.length === 0 ? (
             <p className="text-sm text-ink/70">No moves yet. White always goes first.</p>
           ) : (
@@ -285,6 +307,7 @@ export function GameScreen({
           canRequestHint={snap.canRequestHint}
           hintLoading={snap.hintLoading}
           onRequestHint={() => void session.requestHint()}
+          mood={coachMood({ hintLoading: snap.hintLoading, hasTakeBackOffer: snap.takeBackOffer !== undefined })}
         />
       )}
     </main>

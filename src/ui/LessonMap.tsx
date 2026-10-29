@@ -9,7 +9,7 @@ import { useProgress } from "./useProgress";
 const BADGE: Record<LessonState, { label: string; style: string }> = {
   done: { label: "Done", style: "bg-good/30 text-ink" },
   unlocked: { label: "Ready", style: "bg-brand text-white" },
-  locked: { label: "Locked", style: "bg-ink/10 text-ink/60" },
+  locked: { label: "Locked", style: "bg-ink/10 text-ink/70" },
 };
 
 export function LessonMap() {
@@ -65,7 +65,7 @@ export function LessonMap() {
             {done === 0 ? "Start with lesson 1" : "Continue where you left off"}
           </Link>
         ) : (
-          <p className="text-lg font-bold text-good">You finished every lesson. Now go and play the bot!</p>
+          <p className="text-lg font-bold text-good-dark">You finished every lesson. Now go and play the bot!</p>
         )}
       </header>
 

@@ -3,6 +3,7 @@
 import type { RunnerSnapshot } from "@/features/lessons";
 import type { PromotionName } from "@/content";
 import { Board } from "./Board";
+import { MoveInput } from "./MoveInput";
 import { Inline } from "./RichText";
 import { PromotionPicker } from "./PromotionPicker";
 
@@ -16,7 +17,7 @@ interface Props {
 
 const CHOICE_STYLE = {
   idle: "bg-surface text-ink hover:bg-brand hover:text-white",
-  wrong: "bg-danger/15 text-ink/60 line-through",
+  wrong: "bg-danger/15 text-ink/70 line-through",
   correct: "bg-good/30 text-ink ring-2 ring-good",
 } as const;
 
@@ -50,6 +51,7 @@ export function ExerciseView({ runner, onMove, onAnswer, onChoosePromotion, onCa
           )}
         </div>
       )}
+      {runner.fen && runner.movableColor && <MoveInput onMove={onMove} />}
 
       {runner.choices && (
         <ul className="space-y-2" aria-label="Answers">

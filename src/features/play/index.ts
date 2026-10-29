@@ -4,3 +4,5 @@ export { createAnalysisEngine, createBotEngine, createRandomBotEngine } from "./
 export { BOT_LEVELS, LEVELS } from "@/engine";
 export type { BotLevel } from "@/engine";
 export type { CoachLogEntry } from "@/features/coach";
+export { parseSquares } from "./parseMove";
+export type { ParsedMove } from "./parseMove";

@@ -1,3 +1,7 @@
+"use client";
+
+import { useEffect, useRef } from "react";
+import type { KeyboardEvent } from "react";
 import type { PromotionPiece } from "@/rules";
 
 const CHOICES: { piece: PromotionPiece; label: string; glyph: string }[] = [
@@ -13,8 +17,39 @@ interface Props {
 }
 
 export function PromotionPicker({ onChoose, onCancel }: Props) {
+  const dialogRef = useRef<HTMLDivElement>(null);
+
+  // Keyboard users land on the first choice (the queen), and Tab stays inside until they decide.
+  useEffect(() => {
+    const previous = document.activeElement as HTMLElement | null;
+    dialogRef.current?.querySelector<HTMLButtonElement>("button")?.focus();
+    return () => previous?.focus?.();
+  }, []);
+
+  function onKeyDown(event: KeyboardEvent) {
+    if (event.key === "Escape") {
+      event.stopPropagation();
+      onCancel();
+      return;
+    }
+    if (event.key !== "Tab") return;
+    const buttons = Array.from(dialogRef.current?.querySelectorAll<HTMLButtonElement>("button") ?? []);
+    if (buttons.length === 0) return;
+    const first = buttons[0];
+    const last = buttons[buttons.length - 1];
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  }
+
   return (
     <div
+      ref={dialogRef}
+      onKeyDown={onKeyDown}
       role="dialog"
       aria-modal="true"
       aria-label="Choose a piece for your pawn"

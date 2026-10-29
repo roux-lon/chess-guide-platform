@@ -65,3 +65,22 @@ describe("the real curriculum", () => {
     }
   });
 });
+
+describe("piece personality lines", () => {
+  const speakers = ["pawn", "rook", "bishop", "queen", "knight", "king"];
+
+  it("give each piece lesson a short line in its own voice", () => {
+    for (const id of speakers) {
+      const lesson = LESSONS.find((l) => l.id === id);
+      expect(lesson?.personality, id).toBeTruthy();
+      expect(lesson!.personality!.length, id).toBeLessThan(200);
+      expect(lesson!.personality!, id).toMatch(/^I'm /);
+    }
+  });
+
+  it("are optional, and never leave template markers behind", () => {
+    for (const lesson of LESSONS) {
+      if (lesson.personality !== undefined) expect(lesson.personality).not.toMatch(/[{}]/);
+    }
+  });
+});

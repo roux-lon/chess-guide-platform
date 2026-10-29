@@ -1,4 +1,4 @@
-export { DIARY_VERSION, createEmptyDiary, hasProgress, summarizeDiary } from "./diary";
+export { DIARY_VERSION, EMPTY_STREAK, createEmptyDiary, hasProgress, summarizeDiary } from "./diary";
 export type {
   ActiveGameRecord,
   CoachLogRecord,
@@ -10,6 +10,7 @@ export type {
   GameResult,
   LessonRecord,
   MistakeRecord,
+  StreakRecord,
 } from "./diary";
 export { validateDiary } from "./validate";
 export type { ValidationResult } from "./validate";
@@ -27,8 +28,8 @@ export { BrowserFallbackStorage, CORRUPT_KEY, DIARY_KEY } from "./fallbackStorag
 export { MemoryStorage } from "./memoryStorage";
 export { BrowserLegacy, noLegacy } from "./legacy";
 export type { LegacyPort } from "./legacy";
-export { SMALL_KEY, SmallStore } from "./smallStore";
-export type { KeyValueStore } from "./smallStore";
+export { DEFAULT_PREFS, SMALL_KEY, SmallStore } from "./smallStore";
+export type { KeyValueStore, Prefs } from "./smallStore";
 export { DebouncedWriter } from "./debounce";
 export {
   createStorageServices,

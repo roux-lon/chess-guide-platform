@@ -7,6 +7,7 @@ import type {
   GameRecord,
   LessonRecord,
   MistakeRecord,
+  StreakRecord,
 } from "./diary";
 
 export type ValidationResult = { ok: true; diary: Diary } | { ok: false; problems: string[] };
@@ -18,6 +19,8 @@ const isString = (value: unknown): value is string => typeof value === "string";
 const isNumber = (value: unknown): value is number =>
   typeof value === "number" && Number.isFinite(value);
 const isColor = (value: unknown): value is "white" | "black" => value === "white" || value === "black";
+const isCount = (value: unknown): value is number => isNumber(value) && Number.isInteger(value) && value >= 0;
+const isDay = (value: unknown): value is string => isString(value) && /^\d{4}-\d{2}-\d{2}$/.test(value);
 const isMode = (value: unknown): value is CoachingMode =>
   value === "full" || value === "quiet" || value === "off";
 
@@ -98,6 +101,22 @@ export function validateDiary(raw: unknown): ValidationResult {
     });
   }
 
+  let xp = empty.xp;
+  if (raw.xp !== undefined) {
+    if (isCount(raw.xp)) xp = raw.xp;
+    else problems.push('"xp" should be a whole number, zero or more.');
+  }
+
+  let streak: StreakRecord = { ...empty.streak };
+  if (raw.streak !== undefined) {
+    const s = raw.streak;
+    if (isRecord(s) && isCount(s.current) && isCount(s.best) && (s.lastDay === null || isDay(s.lastDay))) {
+      streak = { current: s.current, best: s.best, lastDay: s.lastDay };
+    } else {
+      problems.push('"streak" should look like { "current": 0, "best": 0, "lastDay": null } (lastDay as YYYY-MM-DD).');
+    }
+  }
+
   let activeGame: ActiveGameRecord | undefined;
   if (raw.activeGame !== undefined) {
     const parsed = parseActiveGame(raw.activeGame);
@@ -116,6 +135,8 @@ export function validateDiary(raw: unknown): ValidationResult {
       lessons,
       games,
       mistakeCounts,
+      xp,
+      streak,
       ...(activeGame ? { activeGame } : {}),
     },
   };

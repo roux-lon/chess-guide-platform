@@ -40,6 +40,18 @@ export const MIGRATION_STEPS: MigrationStep[] = [
       };
     },
   },
+
+  // Version 3 (phase 7) adds experience points and the daily streak. Everyone starts at zero.
+  {
+    from: 2,
+    to: 3,
+    run: (raw) => ({
+      ...raw,
+      version: 3,
+      xp: raw.xp ?? 0,
+      streak: raw.streak ?? { current: 0, best: 0, lastDay: null },
+    }),
+  },
 ];
 
 export type MigrateResult =

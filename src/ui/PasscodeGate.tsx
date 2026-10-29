@@ -3,6 +3,7 @@
 import { useState, useSyncExternalStore } from "react";
 import type { FormEvent, ReactNode } from "react";
 import { passcodeMatches } from "@/lib/passcode";
+import { Mascot } from "./Mascot";
 
 /*
  * This is a polite lock, not real security. The check runs in the browser and
@@ -45,7 +46,16 @@ export function PasscodeGate({ children }: { children: ReactNode }) {
   const [wrong, setWrong] = useState(false);
   const [busy, setBusy] = useState(false);
 
-  if (unlocked === null) return null;
+  if (unlocked === null) {
+    return (
+      <main className="flex min-h-screen flex-col items-center justify-center gap-3 p-6">
+        <Mascot mood="thinking" size={96} />
+        <p role="status" className="text-lg text-ink/70">
+          Getting things ready...
+        </p>
+      </main>
+    );
+  }
   if (unlocked) return <>{children}</>;
 
   async function onSubmit(e: FormEvent) {
@@ -67,6 +77,7 @@ export function PasscodeGate({ children }: { children: ReactNode }) {
         onSubmit={onSubmit}
         className="w-full max-w-sm rounded-[var(--radius-card)] bg-surface p-8 text-center shadow-xl"
       >
+        <Mascot mood="happy" size={96} label="Pip, your chess coach" className="mx-auto" />
         <h1 className="text-3xl font-extrabold text-brand">Chess Coach</h1>
         <p className="mt-2 text-ink/70">Type your secret word to come in.</p>
         <label className="sr-only" htmlFor="passcode">
@@ -90,7 +101,7 @@ export function PasscodeGate({ children }: { children: ReactNode }) {
           </p>
         )}
         {!PASSCODE_HASH && (
-          <p role="alert" className="mt-3 text-sm text-warn">
+          <p role="alert" className="mt-3 text-sm text-ink">
             No passcode is set up yet. Run <code>node scripts/hash-passcode.mjs &quot;word&quot;</code>{" "}
             and put the result in <code>.env.local</code> as NEXT_PUBLIC_PASSCODE_HASH.
           </p>
