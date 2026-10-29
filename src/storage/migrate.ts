@@ -1,5 +1,8 @@
 import { DIARY_VERSION } from "./diary";
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null && !Array.isArray(value);
+
 /** One upgrade: takes data of version `from` and returns data of version `to`. */
 export interface MigrationStep {
   from: number;
@@ -15,6 +18,28 @@ export const MIGRATION_STEPS: MigrationStep[] = [
   // A diary with no "version" at all (for example written by hand) is treated as version 0.
   // Its parts are the same as version 1, so the only change is stamping the version.
   { from: 0, to: 1, run: (raw) => ({ ...raw, version: 1 }) },
+
+  // Version 2 (phase 6) adds what guided games need: player colour, bot level and coaching mode
+  // on each game, a coaching-mode setting, and an optional unfinished game. Older games get
+  // the defaults of the time: White, level 1, and the quiet mode.
+  {
+    from: 1,
+    to: 2,
+    run: (raw) => {
+      const settings = isRecord(raw.settings) ? raw.settings : {};
+      const games = Array.isArray(raw.games)
+        ? raw.games.map((game) =>
+            isRecord(game) ? { playerColor: "white", botLevel: 1, coachingMode: "quiet", ...game } : game,
+          )
+        : raw.games;
+      return {
+        ...raw,
+        version: 2,
+        settings: { ...settings, coachingMode: settings.coachingMode ?? "quiet" },
+        ...(games !== undefined ? { games } : {}),
+      };
+    },
+  },
 ];
 
 export type MigrateResult =
@@ -25,8 +50,6 @@ export type MigrateResult =
       message: string;
     };
 
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === "object" && value !== null && !Array.isArray(value);
 
 /**
  * Upgrades diary data from whatever version it is to the current one. Never throws:

@@ -30,6 +30,7 @@ export const TEMPLATE_VARS: Record<TemplateGroup, readonly string[]> = {
   move_played: ["piece", "from", "to", "san", "captured", "promoted"],
   hanging_piece: ["piece", "square", "attacker", "attackerSquare"],
   capture_trade: ["captured", "capturer", "square", "points"],
+  missed_threat: ["piece", "square", "attacker", "attackerSquare"],
   check_given: ["by"],
   in_check_warning: ["checker", "checkerSquare", "escapes", "kingSquare"],
   threat_from_opponent: [
@@ -132,6 +133,22 @@ export function describeEvent(event: CoachEvent): DescribedEvent {
         terms: event.verdict === "equal" ? ["trade"] : event.verdict === "bad" ? ["piece_value"] : [],
         priority: event.verdict === "bad" ? 75 : event.verdict === "good" ? 72 : 65,
       };
+
+    case "missed_threat": {
+      const attacker = event.attackers[0];
+      return {
+        group: "missed_threat",
+        key: "one",
+        vars: {
+          piece: event.piece.type,
+          square: event.piece.square,
+          attacker: attacker?.type ?? "piece",
+          attackerSquare: attacker?.square ?? "",
+        },
+        terms: ["hanging"],
+        priority: 89,
+      };
+    }
 
     case "check_given":
       return {

@@ -22,6 +22,8 @@ export interface CoachAnalyzerOptions {
   /** A dedicated engine for analysis, so it never cancels the bot's search. */
   engine: EngineAdapter;
   narrator?: Narrator;
+  /** Comments already made, such as those restored when a saved game is continued. */
+  initialLog?: readonly CoachLogEntry[];
   /** Called whenever the log changes. */
   onChange?: () => void;
 }
@@ -44,7 +46,13 @@ export class CoachAnalyzer {
   private cache = new Map<string, Evaluation>();
   private chain: Promise<unknown> = Promise.resolve();
 
-  constructor({ engine, narrator = new TemplateNarrator(), onChange = () => {} }: CoachAnalyzerOptions) {
+  constructor({
+    engine,
+    narrator = new TemplateNarrator(),
+    initialLog = [],
+    onChange = () => {},
+  }: CoachAnalyzerOptions) {
+    this.log = [...initialLog];
     this.engine = engine;
     this.narrator = narrator;
     this.onChange = onChange;
@@ -53,6 +61,11 @@ export class CoachAnalyzer {
   /** Starts the engine early so the first comment is quick. Failures show up on first use. */
   warmUp(): void {
     this.engine.init().catch(() => {});
+  }
+
+  /** Resolves when every move queued so far has been commented on (or dropped). */
+  idle(): Promise<void> {
+    return this.chain.then(() => undefined);
   }
 
   getLog(): readonly CoachLogEntry[] {

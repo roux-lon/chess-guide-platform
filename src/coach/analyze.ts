@@ -14,7 +14,9 @@ export function analyzeMoveEvents(ctx: MoveContext): CoachEvent[] {
  */
 export function takeBackReason(events: CoachEvent[]): "hanging" | "blunder" | null {
   const hung = events.some(
-    (e) => e.kind === "hanging_piece" && e.owner === "you" && e.actor === "you",
+    (e) =>
+      (e.kind === "hanging_piece" && e.owner === "you" && e.actor === "you") ||
+      e.kind === "missed_threat",
   );
   if (hung) return "hanging";
   const blundered = events.some(

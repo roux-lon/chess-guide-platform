@@ -15,6 +15,7 @@ const CHIP_STYLE = {
 const LINKS = [
   { href: "/learn", label: "Learn" },
   { href: "/play", label: "Play the bot" },
+  { href: "/progress", label: "Progress" },
 ] as const;
 
 export function AppNav() {

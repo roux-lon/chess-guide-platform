@@ -1,4 +1,4 @@
-export { createGame } from "./game";
+export { createGame, createGameFromSan } from "./game";
 export type { Game } from "./game";
 export { START_FEN } from "./types";
 export type {
@@ -28,3 +28,5 @@ export {
 export type { HangingInfo, PieceOnSquare } from "./analysis";
 export { explainIllegalMove } from "./illegal";
 export type { IllegalReason } from "./illegal";
+export { movesToPgn, parsePgnMoves } from "./pgn";
+export type { PgnHeaders } from "./pgn";

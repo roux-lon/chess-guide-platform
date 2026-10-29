@@ -1,17 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
-import {
-  BOT_LEVELS,
-  GameSession,
-  LEVELS,
-  createAnalysisEngine,
-  createBotEngine,
-} from "@/features/play";
-import type { BotLevel } from "@/features/play";
+import { useCallback, useRef, useState, useSyncExternalStore } from "react";
+import { COACHING_MODE_TEXT, GAME_TEXT } from "@/content";
+import { BOT_LEVELS, LEVELS } from "@/features/play";
+import type { BotLevel, GameSession } from "@/features/play";
 import { describeStatus } from "@/features/play/statusText";
-import { useProgress } from "./useProgress";
-import type { Color } from "@/rules";
 import { Board } from "./Board";
 import { CoachDrawer } from "./CoachDrawer";
 import { PromotionPicker } from "./PromotionPicker";
@@ -24,38 +17,48 @@ const TONE_CLASS = {
   draw: "bg-info/15 text-ink",
 } as const;
 
-function useSession(): GameSession {
-  const [session] = useState(
-    () => new GameSession({ engine: createBotEngine(), analysisEngine: createAnalysisEngine() }),
-  );
-  useEffect(() => {
-    session.start();
-    return () => session.dispose();
-  }, [session]);
-  return session;
+const small =
+  "rounded-[var(--radius-button)] px-4 py-2 font-bold shadow transition disabled:opacity-40";
+const light = `${small} bg-surface text-ink hover:bg-brand hover:text-white`;
+const strong = `${small} bg-brand text-white hover:bg-brand-dark`;
+
+export interface GameScreenProps {
+  session: GameSession;
+  /** A practice position: nothing is saved. */
+  practice: boolean;
+  /** The game has been written down and its review is ready. */
+  reviewReady: boolean;
+  /** The diary is connected, so the game can be saved. */
+  diaryReady: boolean;
+  onResign(): void;
+  /** Leave the game for the menu. A game in progress is kept so it can be continued. */
+  onLeave(): void;
+  onOpenReview(): void;
+  onEndPractice(): void;
+  onLevelChange(level: BotLevel): void;
 }
 
-export function GameScreen() {
-  const session = useSession();
+/** One game on screen. It draws what the session says and reports what the player does. */
+export function GameScreen({
+  session,
+  practice,
+  reviewReady,
+  diaryReady,
+  onResign,
+  onLeave,
+  onOpenReview,
+  onEndPractice,
+  onLevelChange,
+}: GameScreenProps) {
   const snap = useSyncExternalStore(session.subscribe, session.getSnapshot, session.getSnapshot);
-  const [nextColor, setNextColor] = useState<Color>("white");
   const [drawerOpen, setDrawerOpen] = useState(false);
   /** How many comments the player has already seen, for the "new" badge. */
   const [seenCount, setSeenCount] = useState(0);
+  const [confirmingResign, setConfirmingResign] = useState(false);
   const coachButtonRef = useRef<HTMLButtonElement>(null);
 
-  // The bot level lives in the diary's settings. Apply the saved one once it has loaded.
-  const { snapshot: progress, store: progressStore } = useProgress();
-  const appliedSavedLevel = useRef(false);
-  const savedLevel = progress.diary.settings.botLevel;
-  useEffect(() => {
-    if (!progress.ready || appliedSavedLevel.current) return;
-    appliedSavedLevel.current = true;
-    const level = BOT_LEVELS.find((l) => l === savedLevel);
-    if (level) session.setLevel(level);
-  }, [progress.ready, savedLevel, session]);
-
-  const status = describeStatus(snap.status, snap.playerColor, snap.botThinking);
+  const coaching = snap.coachingMode !== "off";
+  const status = describeStatus(snap.status, snap.playerColor, snap.botThinking, snap.resigned);
   const humanCanMove = snap.legalDests.size > 0;
   const logLength = snap.coachLog.length;
   const unread = drawerOpen ? 0 : Math.max(0, logLength - seenCount);
@@ -82,6 +85,7 @@ export function GameScreen() {
           legalDests={snap.legalDests}
           lastMove={snap.lastMove}
           check={snap.status.inCheck ? snap.turn : undefined}
+          highlights={snap.dangers}
           onMove={(from, to) => session.attemptMove(from, to)}
         />
         {snap.pendingPromotion && (
@@ -93,7 +97,21 @@ export function GameScreen() {
       </section>
 
       <aside className="flex w-full flex-col gap-4 lg:w-80">
-        <h1 className="text-3xl font-extrabold text-brand">Chess Coach</h1>
+        <div>
+          <h1 className="text-3xl font-extrabold text-brand">{practice ? "Practice" : "Your game"}</h1>
+          <p className="text-sm font-semibold text-ink/70">
+            Coaching: {COACHING_MODE_TEXT[snap.coachingMode].label}
+          </p>
+        </div>
+
+        {practice && (
+          <p className="rounded-[var(--radius-card)] bg-info/15 p-3 text-sm">{GAME_TEXT.practiceNote}</p>
+        )}
+        {!practice && !diaryReady && (
+          <p role="alert" className="rounded-[var(--radius-card)] bg-warn/25 p-3 text-sm">
+            {GAME_TEXT.unsavedNote}
+          </p>
+        )}
 
         <div
           role="status"
@@ -103,6 +121,13 @@ export function GameScreen() {
           {status.text}
         </div>
 
+        {snap.latestComment && !snap.gameOver && (
+          <p className="rounded-[var(--radius-card)] bg-brand/10 p-4 text-sm" aria-label="Latest comment from the coach">
+            <span className="font-bold">Coach: </span>
+            {snap.latestComment}
+          </p>
+        )}
+
         {snap.error && (
           <p role="alert" className="rounded-[var(--radius-card)] bg-danger/15 p-3 text-sm">
             Something went wrong: {snap.error}
@@ -110,10 +135,7 @@ export function GameScreen() {
         )}
 
         {snap.takeBackOffer && (
-          <div
-            role="alert"
-            className="flex flex-col gap-2 rounded-[var(--radius-card)] bg-warn/25 p-4 shadow"
-          >
+          <div role="alert" className="flex flex-col gap-2 rounded-[var(--radius-card)] bg-warn/25 p-4 shadow">
             <p className="font-semibold">{snap.takeBackOffer.message}</p>
             <button
               type="button"
@@ -125,60 +147,95 @@ export function GameScreen() {
           </div>
         )}
 
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            ref={coachButtonRef}
-            type="button"
-            onClick={() => setDrawerOpen(true)}
-            aria-expanded={drawerOpen}
-            aria-controls="coach-drawer"
-            className="relative rounded-[var(--radius-button)] bg-surface px-4 py-2 font-bold text-ink shadow transition hover:bg-brand hover:text-white"
-          >
-            Coach
-            {unread > 0 && (
-              <span className="absolute -right-2 -top-2 rounded-full bg-danger px-2 text-xs font-bold text-white">
-                {unread}
-                <span className="sr-only"> new comments</span>
-              </span>
+        {snap.gameOver && !practice && (
+          <div className="flex flex-col gap-2 rounded-[var(--radius-card)] bg-surface p-4 shadow">
+            {reviewReady ? (
+              <button type="button" onClick={onOpenReview} className={strong}>
+                See how it went
+              </button>
+            ) : (
+              <p role="status" className="text-sm text-ink/70">
+                Saving your game...
+              </p>
             )}
+          </div>
+        )}
+        {practice && (
+          <button type="button" onClick={onEndPractice} className={strong}>
+            Back to my review
           </button>
-          <button
-            type="button"
-            onClick={askForHint}
-            className="rounded-[var(--radius-button)] bg-info px-4 py-2 font-bold text-white shadow transition hover:brightness-110"
-          >
-            I&apos;m stuck
+        )}
+
+        {coaching && (
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              ref={coachButtonRef}
+              type="button"
+              onClick={() => setDrawerOpen(true)}
+              aria-expanded={drawerOpen}
+              aria-controls="coach-drawer"
+              className={`relative ${light}`}
+            >
+              Coach
+              {unread > 0 && (
+                <span className="absolute -right-2 -top-2 rounded-full bg-danger px-2 text-xs font-bold text-white">
+                  {unread}
+                  <span className="sr-only"> new comments</span>
+                </span>
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={askForHint}
+              disabled={snap.gameOver}
+              className={`${small} bg-info text-white hover:brightness-110`}
+            >
+              I&apos;m stuck
+            </button>
+          </div>
+        )}
+
+        <div className="flex flex-wrap items-center gap-2">
+          {coaching && (
+            <button type="button" onClick={() => session.undo()} disabled={!snap.canUndo} className={light}>
+              Undo my move
+            </button>
+          )}
+          {!practice && snap.canResign && !confirmingResign && (
+            <button type="button" onClick={() => setConfirmingResign(true)} className={light}>
+              Resign
+            </button>
+          )}
+          <button type="button" onClick={onLeave} className={light}>
+            {practice || snap.gameOver ? "Back to the menu" : "Leave game"}
           </button>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={() => session.undo()}
-            disabled={!snap.canUndo}
-            className="rounded-[var(--radius-button)] bg-surface px-4 py-2 font-bold text-ink shadow transition hover:bg-brand hover:text-white disabled:opacity-40 disabled:hover:bg-surface disabled:hover:text-ink"
-          >
-            Undo my move
-          </button>
-          <button
-            type="button"
-            onClick={() => session.newGame(nextColor)}
-            className="rounded-[var(--radius-button)] bg-brand px-4 py-2 font-bold text-white shadow transition hover:bg-brand-dark"
-          >
-            New game
-          </button>
-          <label className="flex items-center gap-2 text-sm font-semibold">
-            I play
-            <select
-              value={nextColor}
-              onChange={(e) => setNextColor(e.target.value as Color)}
-              className="rounded-[var(--radius-button)] bg-surface px-2 py-2 shadow"
-            >
-              <option value="white">White</option>
-              <option value="black">Black</option>
-            </select>
-          </label>
-        </div>
+        {confirmingResign && snap.canResign && (
+          <div role="alert" className="space-y-2 rounded-[var(--radius-card)] bg-warn/25 p-4 shadow">
+            <p className="font-semibold">Give up this game? It will be saved as unfinished.</p>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setConfirmingResign(false);
+                  onResign();
+                }}
+                className={`${small} bg-danger text-white hover:brightness-110`}
+              >
+                Yes, resign
+              </button>
+              <button type="button" onClick={() => setConfirmingResign(false)} className={light}>
+                Keep playing
+              </button>
+            </div>
+          </div>
+        )}
+        {!practice && !snap.gameOver && (
+          <p className="text-xs text-ink/60">
+            Leaving a game keeps it, so you can continue it later from the menu.
+          </p>
+        )}
 
         <div className="rounded-[var(--radius-card)] bg-surface p-4 shadow">
           <label className="flex flex-col gap-1 text-sm font-semibold">
@@ -188,8 +245,7 @@ export function GameScreen() {
               onChange={(e) => {
                 const level = Number(e.target.value) as BotLevel;
                 session.setLevel(level);
-                // Saved after a quiet moment, so changing it a few times writes the file once.
-                void progressStore.updateSettings({ botLevel: level });
+                onLevelChange(level);
               }}
               className="rounded-[var(--radius-button)] bg-page px-2 py-2"
             >
@@ -220,15 +276,17 @@ export function GameScreen() {
         </section>
       </aside>
 
-      <CoachDrawer
-        open={drawerOpen}
-        onClose={closeDrawer}
-        log={snap.coachLog}
-        hints={snap.hints}
-        canRequestHint={snap.canRequestHint}
-        hintLoading={snap.hintLoading}
-        onRequestHint={() => void session.requestHint()}
-      />
+      {coaching && (
+        <CoachDrawer
+          open={drawerOpen}
+          onClose={closeDrawer}
+          log={snap.coachLog}
+          hints={snap.hints}
+          canRequestHint={snap.canRequestHint}
+          hintLoading={snap.hintLoading}
+          onRequestHint={() => void session.requestHint()}
+        />
+      )}
     </main>
   );
 }

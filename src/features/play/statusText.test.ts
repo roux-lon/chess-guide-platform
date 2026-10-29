@@ -19,6 +19,12 @@ describe("describeStatus", () => {
     expect(describeStatus(status, "black", false).tone).toBe("lose");
   });
 
+  it("says so when the player resigned", () => {
+    const line = describeStatus(createGame().status(), "white", false, true);
+    expect(line.tone).toBe("lose");
+    expect(line.text).toMatch(/resigned/i);
+  });
+
   it("reports stalemate as a draw", () => {
     const status = createGame("7k/5Q2/6K1/8/8/8/8/8 b - - 0 1").status();
     const line = describeStatus(status, "white", false);

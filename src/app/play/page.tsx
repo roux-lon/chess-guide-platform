@@ -1,5 +1,5 @@
-import { GameScreen } from "@/ui/GameScreen";
+import { PlayScreen } from "@/ui/PlayScreen";
 
 export default function PlayPage() {
-  return <GameScreen />;
+  return <PlayScreen />;
 }

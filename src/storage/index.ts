@@ -1,10 +1,13 @@
 export { DIARY_VERSION, createEmptyDiary, hasProgress, summarizeDiary } from "./diary";
 export type {
+  ActiveGameRecord,
   CoachLogRecord,
+  CoachingMode,
   Diary,
   DiarySettings,
   DiarySummary,
   GameRecord,
+  GameResult,
   LessonRecord,
   MistakeRecord,
 } from "./diary";

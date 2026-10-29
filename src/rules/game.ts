@@ -75,7 +75,24 @@ export interface Game {
 
 export function createGame(fen?: string): Game {
   // chess.js throws on an invalid FEN; that surfaces as a normal Error.
-  const chess = fen ? new Chess(fen) : new Chess();
+  return wrap(fen ? new Chess(fen) : new Chess());
+}
+
+/**
+ * A game with these moves already played from the standard start, in standard notation
+ * (SAN, like "Nf3"). Returns null if any move is not legal. Undo works through all of them.
+ */
+export function createGameFromSan(sanMoves: readonly string[]): Game | null {
+  const chess = new Chess();
+  try {
+    for (const san of sanMoves) chess.move(san);
+  } catch {
+    return null;
+  }
+  return wrap(chess);
+}
+
+function wrap(chess: Chess): Game {
 
   const verboseMoves = (square?: Square) =>
     chess.moves({ verbose: true, ...(square ? { square: square as ChessSquare } : {}) });

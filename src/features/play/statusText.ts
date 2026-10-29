@@ -22,7 +22,11 @@ export function describeStatus(
   status: GameStatus,
   playerColor: Color,
   botThinking: boolean,
+  resigned = false,
 ): StatusLine {
+  if (resigned) {
+    return { text: "You resigned this game. It is saved, so you can look back at it.", tone: "lose" };
+  }
   if (status.isGameOver) {
     if (status.outcome === "checkmate" && status.winner) {
       const youWon = status.winner === playerColor;

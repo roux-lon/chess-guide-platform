@@ -1,5 +1,13 @@
 import { DIARY_VERSION, createEmptyDiary } from "./diary";
-import type { CoachLogRecord, Diary, GameRecord, LessonRecord, MistakeRecord } from "./diary";
+import type {
+  ActiveGameRecord,
+  CoachLogRecord,
+  CoachingMode,
+  Diary,
+  GameRecord,
+  LessonRecord,
+  MistakeRecord,
+} from "./diary";
 
 export type ValidationResult = { ok: true; diary: Diary } | { ok: false; problems: string[] };
 
@@ -9,6 +17,9 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 const isString = (value: unknown): value is string => typeof value === "string";
 const isNumber = (value: unknown): value is number =>
   typeof value === "number" && Number.isFinite(value);
+const isColor = (value: unknown): value is "white" | "black" => value === "white" || value === "black";
+const isMode = (value: unknown): value is CoachingMode =>
+  value === "full" || value === "quiet" || value === "off";
 
 /**
  * Checks that `raw` is a current-version diary. It is strict on purpose: a file that looks
@@ -32,6 +43,7 @@ export function validateDiary(raw: unknown): ValidationResult {
   const settingsRaw = raw.settings ?? {};
   let botLevel = empty.settings.botLevel;
   let coachTone = empty.settings.coachTone;
+  let coachingMode = empty.settings.coachingMode;
   if (!isRecord(settingsRaw)) {
     problems.push('"settings" should be an object.');
   } else {
@@ -42,6 +54,10 @@ export function validateDiary(raw: unknown): ValidationResult {
     if (settingsRaw.coachTone !== undefined) {
       if (isString(settingsRaw.coachTone)) coachTone = settingsRaw.coachTone;
       else problems.push('"settings.coachTone" should be text.');
+    }
+    if (settingsRaw.coachingMode !== undefined) {
+      if (isMode(settingsRaw.coachingMode)) coachingMode = settingsRaw.coachingMode;
+      else problems.push('"settings.coachingMode" should be "full", "quiet" or "off".');
     }
   }
 
@@ -82,6 +98,13 @@ export function validateDiary(raw: unknown): ValidationResult {
     });
   }
 
+  let activeGame: ActiveGameRecord | undefined;
+  if (raw.activeGame !== undefined) {
+    const parsed = parseActiveGame(raw.activeGame);
+    if (typeof parsed === "string") problems.push(`Unfinished game: ${parsed}`);
+    else activeGame = parsed;
+  }
+
   if (problems.length > 0) return { ok: false, problems };
 
   return {
@@ -89,12 +112,42 @@ export function validateDiary(raw: unknown): ValidationResult {
     diary: {
       version: DIARY_VERSION,
       updatedAt: updatedAt as string,
-      settings: { botLevel, coachTone },
+      settings: { botLevel, coachTone, coachingMode },
       lessons,
       games,
       mistakeCounts,
+      ...(activeGame ? { activeGame } : {}),
     },
   };
+}
+
+function parseCoachLog(raw: unknown): CoachLogRecord[] | string {
+  if (!Array.isArray(raw ?? [])) return '"coachLog" should be a list.';
+  const log: CoachLogRecord[] = [];
+  for (const entry of (raw ?? []) as unknown[]) {
+    if (!isRecord(entry) || !isNumber(entry.ply) || !isString(entry.event) || !isString(entry.text)) {
+      return 'each "coachLog" entry needs "ply", "event" and "text".';
+    }
+    log.push({ ply: entry.ply, event: entry.event, text: entry.text });
+  }
+  return log;
+}
+
+function parseMistakes(raw: unknown): MistakeRecord[] | string {
+  if (!Array.isArray(raw ?? [])) return '"mistakes" should be a list.';
+  const mistakes: MistakeRecord[] = [];
+  for (const entry of (raw ?? []) as unknown[]) {
+    if (!isRecord(entry) || !isNumber(entry.ply) || !isString(entry.type)) {
+      return 'each "mistakes" entry needs "ply" and "type".';
+    }
+    if (entry.lossCp !== undefined && !isNumber(entry.lossCp)) return '"lossCp" should be a number.';
+    mistakes.push({
+      ply: entry.ply,
+      type: entry.type,
+      ...(entry.lossCp !== undefined ? { lossCp: entry.lossCp as number } : {}),
+    });
+  }
+  return mistakes;
 }
 
 /** A game record, or a message saying what is wrong with it. */
@@ -102,28 +155,61 @@ function parseGame(raw: unknown): GameRecord | string {
   if (!isRecord(raw)) return "should be an object.";
   if (!isString(raw.id)) return '"id" should be text.';
   if (!isString(raw.playedAt)) return '"playedAt" should be text.';
-  if (raw.result !== "win" && raw.result !== "loss" && raw.result !== "draw") {
-    return '"result" should be "win", "loss" or "draw".';
+  if (
+    raw.result !== "win" &&
+    raw.result !== "loss" &&
+    raw.result !== "draw" &&
+    raw.result !== "abandoned"
+  ) {
+    return '"result" should be "win", "loss", "draw" or "abandoned".';
   }
+  if (!isColor(raw.playerColor)) return '"playerColor" should be "white" or "black".';
+  if (!isNumber(raw.botLevel)) return '"botLevel" should be a number.';
+  if (!isMode(raw.coachingMode)) return '"coachingMode" should be "full", "quiet" or "off".';
   if (!isString(raw.pgn)) return '"pgn" should be text.';
 
-  const coachLog: CoachLogRecord[] = [];
-  if (!Array.isArray(raw.coachLog ?? [])) return '"coachLog" should be a list.';
-  for (const entry of (raw.coachLog ?? []) as unknown[]) {
-    if (!isRecord(entry) || !isNumber(entry.ply) || !isString(entry.event) || !isString(entry.text)) {
-      return 'each "coachLog" entry needs "ply", "event" and "text".';
-    }
-    coachLog.push({ ply: entry.ply, event: entry.event, text: entry.text });
-  }
+  const coachLog = parseCoachLog(raw.coachLog);
+  if (typeof coachLog === "string") return coachLog;
+  const mistakes = parseMistakes(raw.mistakes);
+  if (typeof mistakes === "string") return mistakes;
 
-  const mistakes: MistakeRecord[] = [];
-  if (!Array.isArray(raw.mistakes ?? [])) return '"mistakes" should be a list.';
-  for (const entry of (raw.mistakes ?? []) as unknown[]) {
-    if (!isRecord(entry) || !isNumber(entry.ply) || !isString(entry.type)) {
-      return 'each "mistakes" entry needs "ply" and "type".';
-    }
-    mistakes.push({ ply: entry.ply, type: entry.type });
-  }
+  return {
+    id: raw.id,
+    playedAt: raw.playedAt,
+    result: raw.result,
+    playerColor: raw.playerColor,
+    botLevel: raw.botLevel,
+    coachingMode: raw.coachingMode,
+    pgn: raw.pgn,
+    coachLog,
+    mistakes,
+  };
+}
 
-  return { id: raw.id, playedAt: raw.playedAt, result: raw.result, pgn: raw.pgn, coachLog, mistakes };
+function parseActiveGame(raw: unknown): ActiveGameRecord | string {
+  if (!isRecord(raw)) return "should be an object.";
+  if (!isString(raw.id)) return '"id" should be text.';
+  if (!isString(raw.startedAt)) return '"startedAt" should be text.';
+  if (!isColor(raw.playerColor)) return '"playerColor" should be "white" or "black".';
+  if (!isNumber(raw.botLevel)) return '"botLevel" should be a number.';
+  if (!isMode(raw.coachingMode)) return '"coachingMode" should be "full", "quiet" or "off".';
+  if (!isString(raw.fen)) return '"fen" should be text.';
+  if (!Array.isArray(raw.moves) || !raw.moves.every(isString)) return '"moves" should be a list of text.';
+
+  const coachLog = parseCoachLog(raw.coachLog);
+  if (typeof coachLog === "string") return coachLog;
+  const mistakes = parseMistakes(raw.mistakes);
+  if (typeof mistakes === "string") return mistakes;
+
+  return {
+    id: raw.id,
+    startedAt: raw.startedAt,
+    playerColor: raw.playerColor,
+    botLevel: raw.botLevel,
+    coachingMode: raw.coachingMode,
+    fen: raw.fen,
+    moves: raw.moves as string[],
+    coachLog,
+    mistakes,
+  };
 }

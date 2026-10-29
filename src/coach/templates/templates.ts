@@ -6,6 +6,7 @@ export type TemplateGroup =
   | "move_played"
   | "hanging_piece"
   | "capture_trade"
+  | "missed_threat"
   | "check_given"
   | "in_check_warning"
   | "threat_from_opponent"
@@ -110,6 +111,13 @@ export const TEMPLATES: Record<TemplateGroup, Record<string, string[]>> = {
     ],
     bot_bad: [
       "But its {capturer} on {square} can be captured. A good chance to come out ahead!",
+    ],
+  },
+
+  missed_threat: {
+    one: [
+      "The bot was attacking your {piece} on {square}, and it is still hanging. Before you move, check what the bot is threatening.",
+      "Your {piece} on {square} was under attack and nothing changed, so the bot can still take it for free.",
     ],
   },
 

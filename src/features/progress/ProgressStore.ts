@@ -9,9 +9,12 @@ import {
   serializeDiary,
   summarizeDiary,
 } from "@/storage";
+import { countMistakes } from "../games/mistakes";
 import type {
+  ActiveGameRecord,
   Diary,
   DiarySettings,
+  GameRecord,
   DiarySummary,
   LegacyPort,
   SaveOptions,
@@ -148,6 +151,49 @@ export class ProgressStore {
     const next = { ...this.diary.settings, ...patch };
     if (JSON.stringify(next) === JSON.stringify(this.diary.settings)) return;
     await this.commit({ ...this.diary, updatedAt: this.now().toISOString(), settings: next }, {});
+  }
+
+  /**
+   * Saves a game (finished, resigned or left early) and, in the same write, either keeps an
+   * unfinished game to continue (`activeGame`) or clears it (`null`). A game is stored once
+   * per id: saving it again replaces the earlier version, so an abandoned game that is later
+   * resumed and finished becomes one finished game. Mistake counts are recomputed from the
+   * saved games, so nothing is ever counted twice. Written straight away.
+   * Returns false if the diary is not ready or the save failed.
+   */
+  async recordGame(record: GameRecord, options: { activeGame: ActiveGameRecord | null }): Promise<boolean> {
+    await this.load();
+    if (!this.ready) return false;
+    const games = [...this.diary.games.filter((g) => g.id !== record.id), record].sort((a, b) =>
+      a.playedAt.localeCompare(b.playedAt),
+    );
+    const { activeGame: _previous, ...rest } = this.diary;
+    void _previous;
+    return this.commit(
+      {
+        ...rest,
+        updatedAt: this.now().toISOString(),
+        games,
+        mistakeCounts: countMistakes(games),
+        ...(options.activeGame ? { activeGame: options.activeGame } : {}),
+      },
+      { immediate: true },
+    );
+  }
+
+  /**
+   * Remembers the game in progress so it can be continued, or forgets it (`null`). Saved after a
+   * quiet moment, never on every move.
+   */
+  async saveActiveGame(active: ActiveGameRecord | null): Promise<void> {
+    if (!this.ready) return;
+    if (!active && !this.diary.activeGame) return;
+    const { activeGame: _previous, ...rest } = this.diary;
+    void _previous;
+    await this.commit(
+      { ...rest, updatedAt: this.now().toISOString(), ...(active ? { activeGame: active } : {}) },
+      {},
+    );
   }
 
   /** After a failed save: try writing what is on screen again. True if it worked. */

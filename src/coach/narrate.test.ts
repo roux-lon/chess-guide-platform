@@ -51,6 +51,7 @@ const SAMPLE_EVENTS: CoachEvent[] = [
       }),
     ),
   ),
+  { kind: "missed_threat", piece: knight, attackers: [rook] },
   { kind: "check_given", actor: "you", by: "rook" },
   ...[1, 2, 6].map(
     (escapeMoves): CoachEvent => ({

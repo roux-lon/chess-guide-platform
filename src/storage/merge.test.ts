@@ -9,6 +9,9 @@ const game = (id: string, playedAt: string): GameRecord => ({
   id,
   playedAt,
   result: "win",
+  playerColor: "white",
+  botLevel: 1,
+  coachingMode: "quiet",
   pgn: "",
   coachLog: [],
   mistakes: [],
@@ -46,11 +49,28 @@ describe("mergeDiaries", () => {
   });
 
   it("keeps the base settings and the newer date", () => {
-    const base = diary({ settings: { botLevel: 4, coachTone: "playful" }, updatedAt: "2026-05-01T00:00:00.000Z" });
-    const incoming = diary({ settings: { botLevel: 1, coachTone: "calm" }, updatedAt: "2026-06-01T00:00:00.000Z" });
+    const base = diary({ settings: { botLevel: 4, coachTone: "playful", coachingMode: "quiet" }, updatedAt: "2026-05-01T00:00:00.000Z" });
+    const incoming = diary({ settings: { botLevel: 1, coachTone: "calm", coachingMode: "off" }, updatedAt: "2026-06-01T00:00:00.000Z" });
     const merged = mergeDiaries(base, incoming);
     expect(merged.settings.botLevel).toBe(4);
     expect(merged.updatedAt).toBe("2026-06-01T00:00:00.000Z");
+  });
+
+  it("keeps an unfinished game, preferring the base one", () => {
+    const active = (id: string) => ({
+      id,
+      startedAt: "2026-01-01T00:00:00.000Z",
+      playerColor: "white" as const,
+      botLevel: 1,
+      coachingMode: "quiet" as const,
+      fen: "x",
+      moves: ["e4"],
+      coachLog: [],
+      mistakes: [],
+    });
+    expect(mergeDiaries(diary({ activeGame: active("a") }), diary({ activeGame: active("b") })).activeGame?.id).toBe("a");
+    expect(mergeDiaries(diary({}), diary({ activeGame: active("b") })).activeGame?.id).toBe("b");
+    expect(mergeDiaries(diary({}), diary({})).activeGame).toBeUndefined();
   });
 
   it("does not change its inputs", () => {

@@ -57,14 +57,6 @@ describe("GameSession coach", () => {
     expect(session.getSnapshot().canRequestHint).toBe(false);
   });
 
-  it("starts a new game with an empty log", async () => {
-    const session = coachSession([E5]);
-    session.attemptMove("e2", "e4");
-    await vi.waitFor(() => expect(session.getSnapshot().coachLog).toHaveLength(2));
-    session.newGame();
-    expect(session.getSnapshot().coachLog).toEqual([]);
-  });
-
   describe("hints", () => {
     it("reveal one tier per press, in order, and stop after three", async () => {
       const session = coachSession([]);
@@ -102,16 +94,13 @@ describe("GameSession coach", () => {
       expect(session.getSnapshot().canRequestHint).toBe(true);
     });
 
-    it("reset on undo and on a new game", async () => {
+    it("reset on undo", async () => {
       const session = coachSession([E5]);
       session.attemptMove("e2", "e4");
       await vi.waitFor(() => expect(session.getSnapshot().moves).toHaveLength(2));
       await session.requestHint();
       expect(session.getSnapshot().hints).toHaveLength(1);
       session.undo();
-      expect(session.getSnapshot().hints).toEqual([]);
-      await session.requestHint();
-      session.newGame();
       expect(session.getSnapshot().hints).toEqual([]);
     });
 

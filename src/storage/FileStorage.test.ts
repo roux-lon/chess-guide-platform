@@ -53,7 +53,7 @@ describe("first run", () => {
 
     expect(picker.calls).toEqual(["create"]);
     expect(storage.getStatus()).toEqual({ state: "connected", fileName: "chess-progress.json" });
-    expect(JSON.parse(created.content)).toMatchObject({ version: 1, lessons: {} });
+    expect(JSON.parse(created.content)).toMatchObject({ version: 2, lessons: {} });
     expect(await handles.get()).toBe(created);
     // Only a tiny hint is kept in browser storage, never the diary.
     expect(Object.keys(kv.data)).toEqual(["chess-coach.small"]);
@@ -239,7 +239,7 @@ describe("a file that cannot be read", () => {
 
     expect(result).toBe(true);
     expect(picker.copies).toEqual([{ name: "chess-progress.backup.json", text: original }]);
-    expect(JSON.parse(file.content)).toMatchObject({ version: 1, lessons: {} });
+    expect(JSON.parse(file.content)).toMatchObject({ version: 2, lessons: {} });
     expect(storage.getStatus()).toEqual({ state: "connected", fileName: "chess-progress.json" });
     // And saving works again.
     await storage.save(diaryWith(["pawn"]), { immediate: true });
@@ -284,13 +284,13 @@ describe("older files", () => {
     const { storage } = setup(file);
 
     const diary = await storage.load();
-    expect(diary.version).toBe(1);
+    expect(diary.version).toBe(2);
     expect(Object.keys(diary.lessons)).toEqual(["pawn"]);
     expect(file.writes).toEqual([]);
     expect(file.content).toBe(text);
 
     await storage.save(diary, { immediate: true });
-    expect(JSON.parse(file.content).version).toBe(1);
+    expect(JSON.parse(file.content).version).toBe(2);
   });
 });
 

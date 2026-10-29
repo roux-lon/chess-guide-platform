@@ -32,3 +32,13 @@ export {
 } from "./feedback";
 export type { IllegalKey, WrongKey } from "./feedback";
 export { LESSONS } from "./lessons";
+export { MISTAKE_TYPES, MISTAKE_TYPE_IDS, isMistakeType, mistakeLabel } from "./mistakes";
+export type { MistakeInfo, MistakeType } from "./mistakes";
+export {
+  COACHING_MODE_TEXT,
+  GAME_TEXT,
+  MILESTONE_TEXT,
+  RESULT_TEXT,
+  REVIEW_TEXT,
+  SUGGESTION_TEXT,
+} from "./progressText";

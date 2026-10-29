@@ -7,6 +7,7 @@ import { gameOver } from "./gameOver";
 import { goodDevelopment } from "./goodDevelopment";
 import { hangingPiece } from "./hangingPiece";
 import { inCheckWarning } from "./inCheckWarning";
+import { missedThreat } from "./missedThreat";
 import { moveQuality } from "./moveQuality";
 import { threatFromOpponent } from "./threatFromOpponent";
 
@@ -17,6 +18,7 @@ export const DETECTORS: Detector[] = [
   checkGiven,
   inCheckWarning,
   hangingPiece,
+  missedThreat,
   captureTrade,
   threatFromOpponent,
   moveQuality,
@@ -37,6 +39,7 @@ export {
   goodDevelopment,
   hangingPiece,
   inCheckWarning,
+  missedThreat,
   moveQuality,
   threatFromOpponent,
 };

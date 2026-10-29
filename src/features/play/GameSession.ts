@@ -2,10 +2,14 @@ import { COACH_CONFIG, TAKE_BACK_MESSAGES, buildHintEvents } from "@/coach";
 import type { CoachEvent, Narrator } from "@/coach";
 import { CoachAnalyzer } from "@/features/coach";
 import type { CoachLogEntry } from "@/features/coach";
-import { createGame } from "@/rules";
+import { newId } from "@/lib/id";
+import { createGame, createGameFromSan } from "@/rules";
 import type { Color, Game, GameStatus, MoveInfo, PromotionPiece, Square } from "@/rules";
 import { DEFAULT_LEVEL } from "@/engine";
 import type { BotLevel, EngineAdapter } from "@/engine";
+import type { CoachLogRecord, CoachingMode, MistakeRecord } from "@/storage";
+import { dangerHighlights } from "./dangers";
+import type { DangerHighlight } from "./dangers";
 
 export interface HintView {
   /** 1 = where to look, 2 = what the bot threatens, 3 = the suggested move. */
@@ -21,21 +25,36 @@ export interface TakeBackOffer {
 }
 
 export interface GameSnapshot {
+  /** Stays the same for the whole game, including after it is resumed. */
+  gameId: string;
   fen: string;
   turn: Color;
   playerColor: Color;
   level: BotLevel;
+  coachingMode: CoachingMode;
+  /** A practice position (retrying a mistake): never saved to the diary. */
+  practice: boolean;
   status: GameStatus;
+  /** The game has ended, by the rules or because the player resigned. */
+  gameOver: boolean;
+  resigned: boolean;
   /** Legal destinations for the human. Empty when it is not their turn. */
   legalDests: Map<Square, Square[]>;
   lastMove?: { from: Square; to: Square };
   moves: MoveInfo[];
+  /** The moves in standard notation, oldest first. */
+  sanMoves: string[];
   botThinking: boolean;
   pendingPromotion?: { from: Square; to: Square };
   canUndo: boolean;
+  canResign: boolean;
   error?: string;
-  /** One comment per half-move played so far, oldest first. */
+  /** One comment per half-move played so far, oldest first. Empty when coaching is off. */
   coachLog: readonly CoachLogEntry[];
+  /** Full coaching only: squares to light up on the board. */
+  dangers: DangerHighlight[];
+  /** Full coaching only: the coach's latest words, shown beside the board. */
+  latestComment?: string;
   /** Hints revealed for the current position, in tier order. Reset after every move. */
   hints: HintView[];
   hintLoading: boolean;
@@ -44,17 +63,27 @@ export interface GameSnapshot {
   takeBackOffer?: TakeBackOffer;
 }
 
+/** What is needed to continue a saved game. */
+export interface RestoreState {
+  moves: readonly string[];
+  coachLog: readonly CoachLogRecord[];
+  mistakes: readonly MistakeRecord[];
+}
+
 export interface GameSessionOptions {
   engine: EngineAdapter;
   /**
    * A second engine used only for coaching (evaluations and hints). It must not be the same
    * instance as `engine`: an engine runs one search at a time and would cancel the bot.
-   * Without it the game still works, just with no coach.
+   * Without it the game still works, just with no coach. Leave it out when coaching is off.
    */
   analysisEngine?: EngineAdapter;
   narrator?: Narrator;
   playerColor?: Color;
   level?: BotLevel;
+  coachingMode?: CoachingMode;
+  /** Identifies the game in the diary. Made up if not given. */
+  gameId?: string;
   /** Pause before the bot replies so its move is easy to follow. */
   botDelayMs?: number;
   /**
@@ -62,18 +91,26 @@ export interface GameSessionOptions {
    * warning can show up before the bot punishes the move.
    */
   coachWaitMs?: number;
-  /** Position for the first game only (handy for tests); new games use the standard start. */
+  /** Position for the first game only (handy for tests and practice); new games use the standard start. */
   startFen?: string;
+  /** Continue a saved game instead of starting a new one. */
+  restore?: RestoreState;
+  /** A practice position: the game is not meant to be saved. */
+  practice?: boolean;
 }
 
 const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
 /** Orchestrates one game between the human and an engine, plus the coach. No React in here. */
 export class GameSession {
+  readonly gameId: string;
   private game: Game;
   private playerColor: Color;
   private level: BotLevel;
+  private readonly coachingMode: CoachingMode;
+  private readonly practice: boolean;
   private botThinking = false;
+  private resigned = false;
   private pendingPromotion?: { from: Square; to: Square };
   private error?: string;
   /** Bumped whenever a pending bot reply should be thrown away. */
@@ -85,6 +122,8 @@ export class GameSession {
   private readonly coachWaitMs: number;
 
   private readonly coach?: CoachAnalyzer;
+  /** Mistakes kept from an earlier visit to this game (a resumed game). */
+  private restoredMistakes: MistakeRecord[] = [];
   /** Resolves when the coach has finished commenting on the player's latest move. */
   private pendingAnalysis?: Promise<unknown>;
   private hints: HintView[] = [];
@@ -99,19 +138,49 @@ export class GameSession {
     narrator,
     playerColor = "white",
     level = DEFAULT_LEVEL,
+    coachingMode = "quiet",
+    gameId,
     botDelayMs = 400,
     coachWaitMs = 1500,
     startFen,
+    restore,
+    practice = false,
   }: GameSessionOptions) {
-    this.game = createGame(startFen);
+    this.gameId = gameId ?? newId();
     this.engine = engine;
     this.level = level;
     engine.setLevel(level);
     this.playerColor = playerColor;
+    this.coachingMode = coachingMode;
+    this.practice = practice;
     this.botDelayMs = botDelayMs;
     this.coachWaitMs = coachWaitMs;
+
+    let initialLog: CoachLogEntry[] = [];
+    if (restore) {
+      const replayed = createGameFromSan(restore.moves);
+      if (!replayed) throw new Error("The saved game could not be replayed.");
+      this.game = replayed;
+      this.restoredMistakes = [...restore.mistakes];
+      // Comments from before keep their words, but not the detail behind them.
+      initialLog = restore.coachLog.map((record) => ({
+        ply: record.ply,
+        moveSan: restore.moves[record.ply - 1] ?? "",
+        side: (record.ply % 2 === 1) === (playerColor === "white") ? "you" : "bot",
+        events: [],
+        text: record.text,
+      }));
+    } else {
+      this.game = createGame(startFen);
+    }
+
     if (analysisEngine) {
-      this.coach = new CoachAnalyzer({ engine: analysisEngine, narrator, onChange: () => this.emit() });
+      this.coach = new CoachAnalyzer({
+        engine: analysisEngine,
+        narrator,
+        initialLog,
+        onChange: () => this.emit(),
+      });
     }
     this.snapshot = this.buildSnapshot();
   }
@@ -123,6 +192,16 @@ export class GameSession {
 
   /** Stable between changes, as useSyncExternalStore requires. */
   getSnapshot = (): GameSnapshot => this.snapshot;
+
+  /** Mistakes kept from an earlier visit, still valid for the moves now on the board. */
+  getRestoredMistakes(): readonly MistakeRecord[] {
+    return this.restoredMistakes;
+  }
+
+  /** Resolves once the coach has commented on every move so far. Resolves at once with no coach. */
+  coachSettled(): Promise<void> {
+    return this.coach?.idle() ?? Promise.resolve();
+  }
 
   /** Starts the game; if the human plays black the bot makes the first move. */
   start(): void {
@@ -147,21 +226,6 @@ export class GameSession {
     }
   }
 
-  newGame(playerColor: Color = this.playerColor): void {
-    this.token++;
-    this.engine.cancel();
-    this.coach?.reset();
-    this.pendingAnalysis = undefined;
-    this.resetHints();
-    this.game = createGame();
-    this.playerColor = playerColor;
-    this.botThinking = false;
-    this.pendingPromotion = undefined;
-    this.error = undefined;
-    this.emit();
-    void this.maybeBotMove();
-  }
-
   /** Called when the human drags or clicks a move. Illegal moves are ignored. */
   attemptMove(from: Square, to: Square): void {
     if (!this.isHumanTurn()) return this.emit();
@@ -184,8 +248,24 @@ export class GameSession {
     this.emit();
   }
 
-  /** Takes back the human's last move (and the bot's reply, if it made one). */
+  /** The player gives up. The game stops here; the bot makes no more moves. */
+  resign(): void {
+    if (this.resigned || this.game.status().isGameOver) return;
+    this.token++;
+    this.engine.cancel();
+    this.botThinking = false;
+    this.pendingPromotion = undefined;
+    this.resigned = true;
+    this.resetHints();
+    this.emit();
+  }
+
+  /**
+   * Takes back the human's last move (and the bot's reply, if it made one).
+   * Not available with coaching off: that mode is the "can I play on my own?" test.
+   */
   undo(): void {
+    if (this.resigned || this.coachingMode === "off") return;
     this.token++;
     this.engine.cancel();
     this.botThinking = false;
@@ -198,7 +278,9 @@ export class GameSession {
         // keep going until it is the human's turn again
       }
     }
-    this.coach?.truncate(this.game.history().length);
+    const length = this.game.history().length;
+    this.restoredMistakes = this.restoredMistakes.filter((m) => m.ply <= length);
+    this.coach?.truncate(length);
     this.emit();
     void this.maybeBotMove();
   }
@@ -239,12 +321,12 @@ export class GameSession {
     this.coach?.dispose();
   }
 
+  private isOver(): boolean {
+    return this.resigned || this.game.status().isGameOver;
+  }
+
   private isHumanTurn(): boolean {
-    return (
-      !this.botThinking &&
-      !this.game.status().isGameOver &&
-      this.game.turn() === this.playerColor
-    );
+    return !this.botThinking && !this.isOver() && this.game.turn() === this.playerColor;
   }
 
   private resetHints(): void {
@@ -277,7 +359,7 @@ export class GameSession {
   }
 
   private async maybeBotMove(): Promise<void> {
-    if (this.game.status().isGameOver || this.game.turn() === this.playerColor) return;
+    if (this.isOver() || this.game.turn() === this.playerColor) return;
     const token = ++this.token;
     this.botThinking = true;
     this.emit();
@@ -326,20 +408,32 @@ export class GameSession {
     const moves = this.game.history();
     const last = moves[moves.length - 1];
     const humanTurn = this.isHumanTurn();
+    const over = this.isOver();
+    const log = this.coach?.getLog() ?? [];
+    const full = this.coachingMode === "full";
     return {
+      gameId: this.gameId,
       fen: this.game.fen(),
       turn: this.game.turn(),
       playerColor: this.playerColor,
       level: this.level,
+      coachingMode: this.coachingMode,
+      practice: this.practice,
       status: this.game.status(),
+      gameOver: over,
+      resigned: this.resigned,
       legalDests: humanTurn ? this.game.legalDests() : new Map(),
       lastMove: last ? { from: last.from, to: last.to } : undefined,
       moves,
+      sanMoves: moves.map((m) => m.san),
       botThinking: this.botThinking,
       pendingPromotion: this.pendingPromotion,
-      canUndo: moves.some((m) => m.color === this.playerColor),
+      canUndo: moves.some((m) => m.color === this.playerColor) && this.coachingMode !== "off" && !this.resigned,
+      canResign: !over,
       error: this.error,
-      coachLog: this.coach?.getLog() ?? [],
+      coachLog: log,
+      dangers: full && !over ? dangerHighlights(this.game.fen(), this.playerColor) : [],
+      ...(full && log.length > 0 ? { latestComment: log[log.length - 1].text } : {}),
       hints: this.hints,
       hintLoading: this.hintLoading,
       canRequestHint:

@@ -24,8 +24,10 @@ export function mergeDiaries(base: Diary, incoming: Diary): Diary {
     mistakeCounts[type] = Math.max(mistakeCounts[type] ?? 0, count);
   }
 
+  const activeGame = base.activeGame ?? incoming.activeGame;
   return {
     ...base,
+    ...(activeGame ? { activeGame } : {}),
     updatedAt: base.updatedAt > incoming.updatedAt ? base.updatedAt : incoming.updatedAt,
     lessons,
     games,

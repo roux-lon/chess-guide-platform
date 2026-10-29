@@ -110,21 +110,12 @@ describe("GameSession", () => {
     expect(session.getSnapshot().moves.map((m) => m.san)).toEqual(["e4", "d5"]);
   });
 
-  it("cancels the engine on new game and undo", () => {
+  it("cancels the engine on undo", () => {
     const engine = scriptedEngine([{ from: "e7", to: "e5" }]);
     const session = new GameSession({ engine, botDelayMs: 0 });
     session.attemptMove("e2", "e4");
-    session.newGame();
-    expect(engine.cancelCount).toBe(1);
     session.undo();
-    expect(engine.cancelCount).toBe(2);
+    expect(engine.cancelCount).toBe(1);
   });
 
-  it("starts a fresh game", async () => {
-    const session = newSession([{ from: "e7", to: "e5" }]);
-    session.attemptMove("e2", "e4");
-    await settle();
-    session.newGame("white");
-    expect(session.getSnapshot().moves).toHaveLength(0);
-  });
 });

@@ -41,6 +41,17 @@ export interface CaptureTradeEvent {
   verdict: "good" | "equal" | "bad";
 }
 
+/**
+ * The bot was attacking one of the player's pieces (it could be taken for free), and the
+ * player's move did nothing about it, so it is still hanging.
+ */
+export interface MissedThreatEvent {
+  kind: "missed_threat";
+  piece: PieceRef;
+  /** The enemy pieces that can still take it, cheapest first. */
+  attackers: PieceRef[];
+}
+
 export interface CheckGivenEvent {
   kind: "check_given";
   actor: "you";
@@ -123,6 +134,7 @@ export type CoachEvent =
   | MovePlayedEvent
   | HangingPieceEvent
   | CaptureTradeEvent
+  | MissedThreatEvent
   | CheckGivenEvent
   | InCheckWarningEvent
   | ThreatFromOpponentEvent
