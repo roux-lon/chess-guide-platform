@@ -1,15 +1,11 @@
 import { describe, expect, it } from "vitest";
-import type { EngineAdapter, EngineMove } from "@/engine";
+import { FakeEngine } from "@/engine";
+import type { EngineMove } from "@/engine";
 import { GameSession } from "./GameSession";
 
 /** Replays a fixed list of bot moves. */
-function scriptedEngine(moves: EngineMove[]): EngineAdapter {
-  let i = 0;
-  return {
-    name: "scripted",
-    chooseMove: async () => moves[i++],
-    dispose: () => {},
-  };
+function scriptedEngine(moves: EngineMove[]): FakeEngine {
+  return new FakeEngine(moves);
 }
 
 const settle = () => new Promise((resolve) => setTimeout(resolve, 5));
@@ -88,6 +84,40 @@ describe("GameSession", () => {
     const snap = session.getSnapshot();
     expect(snap.error).toMatch(/illegal/i);
     expect(snap.moves).toHaveLength(1);
+  });
+
+  it("passes the level to the engine and reports it", () => {
+    const engine = scriptedEngine([]);
+    const session = new GameSession({ engine, level: 3, botDelayMs: 0 });
+    expect(engine.level).toBe(3);
+    session.setLevel(5);
+    expect(engine.level).toBe(5);
+    expect(session.getSnapshot().level).toBe(5);
+  });
+
+  it("restarts the bot's search when the level changes mid-thought", async () => {
+    const engine = scriptedEngine([
+      { from: "e7", to: "e5" },
+      { from: "d7", to: "d5" },
+    ]);
+    const session = new GameSession({ engine, botDelayMs: 5 });
+    session.attemptMove("e2", "e4");
+    session.setLevel(4);
+    expect(engine.cancelCount).toBe(1);
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    expect(engine.botMoveRequests).toHaveLength(2);
+    // Only the second answer was played; the first was thrown away.
+    expect(session.getSnapshot().moves.map((m) => m.san)).toEqual(["e4", "d5"]);
+  });
+
+  it("cancels the engine on new game and undo", () => {
+    const engine = scriptedEngine([{ from: "e7", to: "e5" }]);
+    const session = new GameSession({ engine, botDelayMs: 0 });
+    session.attemptMove("e2", "e4");
+    session.newGame();
+    expect(engine.cancelCount).toBe(1);
+    session.undo();
+    expect(engine.cancelCount).toBe(2);
   });
 
   it("starts a fresh game", async () => {

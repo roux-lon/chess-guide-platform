@@ -14,6 +14,11 @@ Build prompts, one per phase: `docs/prompts/`
 - Static build: `npm run build` (writes the static site to `out/`)
 - Passcode hash: `node scripts/hash-passcode.mjs "word"`, then put the output in `.env.local` as `NEXT_PUBLIC_PASSCODE_HASH` (restart dev / rebuild after changing it)
 
+- Copy engine files: `npm run copy-engine` (runs automatically on install, dev and build; puts the lite single-threaded Stockfish into `public/engine/`, which is gitignored)
+- Real-Stockfish check (manual): `REAL_STOCKFISH=1 npx vitest run tests/realStockfish.manual.test.ts`
+
+Engine notes: `engine/` owns Stockfish. Everything else uses `EngineAdapter` (`init`, `setLevel`, `getBotMove`, `evaluate`, `cancel`, `dispose`). Level presets are data in `engine/levels.ts`. `evaluate` always returns centipawns from White's perspective (`mateIn` too: positive = White mates); use `toMoverPerspective` before judging a move. For tests use `FakeEngine` (scripted) or `FakeUciHost` (fake worker). Never point tests at the real worker.
+
 Notes: chessground (board) is imported only in `src/ui/Board.tsx`; chess.js only in `src/rules/`. `engine/` does not import `rules/`: the random bot gets its legal-move list injected from `features/play/createEngine.ts`.
 
 ## Architecture

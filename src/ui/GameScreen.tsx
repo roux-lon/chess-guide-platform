@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState, useSyncExternalStore } from "react";
-import { GameSession, createRandomBotEngine } from "@/features/play";
+import { BOT_LEVELS, GameSession, LEVELS, createBotEngine } from "@/features/play";
+import type { BotLevel } from "@/features/play";
 import { describeStatus } from "@/features/play/statusText";
 import type { Color } from "@/rules";
 import { Board } from "./Board";
@@ -16,7 +17,7 @@ const TONE_CLASS = {
 } as const;
 
 function useSession(): GameSession {
-  const [session] = useState(() => new GameSession({ engine: createRandomBotEngine() }));
+  const [session] = useState(() => new GameSession({ engine: createBotEngine() }));
   useEffect(() => {
     session.start();
     return () => session.dispose();
@@ -97,6 +98,24 @@ export function GameScreen() {
               <option value="black">Black</option>
             </select>
           </label>
+        </div>
+
+        <div className="rounded-[var(--radius-card)] bg-surface p-4 shadow">
+          <label className="flex flex-col gap-1 text-sm font-semibold">
+            Bot strength
+            <select
+              value={snap.level}
+              onChange={(e) => session.setLevel(Number(e.target.value) as BotLevel)}
+              className="rounded-[var(--radius-button)] bg-page px-2 py-2"
+            >
+              {BOT_LEVELS.map((level) => (
+                <option key={level} value={level}>
+                  {LEVELS[level].label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <p className="mt-2 text-sm text-ink/70">{LEVELS[snap.level].blurb}</p>
         </div>
 
         <section aria-label="Moves so far" className="rounded-[var(--radius-card)] bg-surface p-4 shadow">

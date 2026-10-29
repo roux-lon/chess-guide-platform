@@ -1,11 +1,13 @@
 import { createGame } from "@/rules";
 import type { Color, Game, GameStatus, MoveInfo, PromotionPiece, Square } from "@/rules";
-import type { EngineAdapter } from "@/engine";
+import { DEFAULT_LEVEL } from "@/engine";
+import type { BotLevel, EngineAdapter } from "@/engine";
 
 export interface GameSnapshot {
   fen: string;
   turn: Color;
   playerColor: Color;
+  level: BotLevel;
   status: GameStatus;
   /** Legal destinations for the human. Empty when it is not their turn. */
   legalDests: Map<Square, Square[]>;
@@ -20,6 +22,7 @@ export interface GameSnapshot {
 export interface GameSessionOptions {
   engine: EngineAdapter;
   playerColor?: Color;
+  level?: BotLevel;
   /** Pause before the bot replies so its move is easy to follow. */
   botDelayMs?: number;
   /** Position for the first game only (handy for tests); new games use the standard start. */
@@ -30,6 +33,7 @@ export interface GameSessionOptions {
 export class GameSession {
   private game: Game;
   private playerColor: Color;
+  private level: BotLevel;
   private botThinking = false;
   private pendingPromotion?: { from: Square; to: Square };
   private error?: string;
@@ -40,9 +44,17 @@ export class GameSession {
   private readonly engine: EngineAdapter;
   private readonly botDelayMs: number;
 
-  constructor({ engine, playerColor = "white", botDelayMs = 400, startFen }: GameSessionOptions) {
+  constructor({
+    engine,
+    playerColor = "white",
+    level = DEFAULT_LEVEL,
+    botDelayMs = 400,
+    startFen,
+  }: GameSessionOptions) {
     this.game = createGame(startFen);
     this.engine = engine;
+    this.level = level;
+    engine.setLevel(level);
     this.playerColor = playerColor;
     this.botDelayMs = botDelayMs;
     this.snapshot = this.buildSnapshot();
@@ -58,11 +70,29 @@ export class GameSession {
 
   /** Starts the game; if the human plays black the bot makes the first move. */
   start(): void {
+    // Warm the engine up now so the first reply is quick. A failure resurfaces on the first move.
+    this.engine.init().catch(() => {});
     if (!this.botThinking) void this.maybeBotMove();
+  }
+
+  /** Changes bot strength. If the bot is mid-thought it starts over at the new level. */
+  setLevel(level: BotLevel): void {
+    if (level === this.level) return;
+    this.level = level;
+    this.engine.setLevel(level);
+    if (this.botThinking) {
+      this.token++;
+      this.botThinking = false;
+      this.engine.cancel();
+      void this.maybeBotMove();
+    } else {
+      this.emit();
+    }
   }
 
   newGame(playerColor: Color = this.playerColor): void {
     this.token++;
+    this.engine.cancel();
     this.game = createGame();
     this.playerColor = playerColor;
     this.botThinking = false;
@@ -97,6 +127,7 @@ export class GameSession {
   /** Takes back the human's last move (and the bot's reply, if it made one). */
   undo(): void {
     this.token++;
+    this.engine.cancel();
     this.botThinking = false;
     this.pendingPromotion = undefined;
     this.error = undefined;
@@ -137,7 +168,7 @@ export class GameSession {
     this.emit();
     try {
       const [move] = await Promise.all([
-        this.engine.chooseMove(this.game.fen()),
+        this.engine.getBotMove(this.game.fen()),
         new Promise((resolve) => setTimeout(resolve, this.botDelayMs)),
       ]);
       if (token !== this.token) return;
@@ -164,6 +195,7 @@ export class GameSession {
       fen: this.game.fen(),
       turn: this.game.turn(),
       playerColor: this.playerColor,
+      level: this.level,
       status: this.game.status(),
       legalDests: this.isHumanTurn() ? this.game.legalDests() : new Map(),
       lastMove: last ? { from: last.from, to: last.to } : undefined,

@@ -10,16 +10,16 @@ const moves = [
 describe("RandomMoveEngine", () => {
   it("picks from the provided legal moves", async () => {
     const engine = new RandomMoveEngine(() => moves, () => 0.5);
-    expect(await engine.chooseMove("any")).toEqual(moves[1]);
+    expect(await engine.getBotMove("any")).toEqual(moves[1]);
   });
 
   it("never indexes past the end", async () => {
     const engine = new RandomMoveEngine(() => moves, () => 0.999999);
-    expect(await engine.chooseMove("any")).toEqual(moves[2]);
+    expect(await engine.getBotMove("any")).toEqual(moves[2]);
   });
 
   it("rejects when there are no legal moves", async () => {
     const engine = new RandomMoveEngine(() => []);
-    await expect(engine.chooseMove("any")).rejects.toThrow();
+    await expect(engine.getBotMove("any")).rejects.toThrow();
   });
 });

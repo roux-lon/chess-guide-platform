@@ -1,3 +1,5 @@
 export { GameSession } from "./GameSession";
 export type { GameSnapshot } from "./GameSession";
-export { createRandomBotEngine } from "./createEngine";
+export { createBotEngine, createRandomBotEngine } from "./createEngine";
+export { BOT_LEVELS, LEVELS } from "@/engine";
+export type { BotLevel } from "@/engine";

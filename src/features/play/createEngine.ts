@@ -1,8 +1,13 @@
 import { createGame } from "@/rules";
-import { RandomMoveEngine } from "@/engine";
+import { RandomMoveEngine, createStockfishEngine } from "@/engine";
 import type { EngineAdapter } from "@/engine";
 
-/** Wires the placeholder bot to the rules layer. Phase 2 swaps this for Stockfish. */
+/** The real opponent: Stockfish in a Web Worker. */
+export function createBotEngine(): EngineAdapter {
+  return createStockfishEngine();
+}
+
+/** Random mover wired to the rules layer. Kept for tests and as a fallback. */
 export function createRandomBotEngine(): EngineAdapter {
   return new RandomMoveEngine((fen) =>
     createGame(fen)

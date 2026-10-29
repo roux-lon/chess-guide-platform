@@ -1,9 +1,10 @@
-import type { EngineAdapter, EngineMove } from "./EngineAdapter";
+import type { EngineAdapter } from "./EngineAdapter";
+import type { BotLevel, EngineMove, Evaluation } from "./types";
 
 /** Lists the legal moves for a position. Injected so engine/ does not depend on rules/. */
 export type LegalMoveProvider = (fen: string) => EngineMove[];
 
-/** Placeholder opponent: plays a uniformly random legal move. */
+/** Test and fallback opponent: plays a uniformly random legal move and cannot evaluate. */
 export class RandomMoveEngine implements EngineAdapter {
   readonly name = "Random mover";
 
@@ -12,11 +13,23 @@ export class RandomMoveEngine implements EngineAdapter {
     private readonly random: () => number = Math.random,
   ) {}
 
-  async chooseMove(fen: string): Promise<EngineMove> {
+  async init(): Promise<void> {}
+
+  setLevel(level: BotLevel): void {
+    void level;
+  }
+
+  async getBotMove(fen: string): Promise<EngineMove> {
     const moves = this.legalMoves(fen);
     if (moves.length === 0) throw new Error("No legal moves in this position");
     return moves[Math.floor(this.random() * moves.length)];
   }
+
+  async evaluate(): Promise<Evaluation> {
+    return { cpWhite: null, mateIn: null, bestMove: null, principalVariation: [] };
+  }
+
+  cancel(): void {}
 
   dispose(): void {}
 }
