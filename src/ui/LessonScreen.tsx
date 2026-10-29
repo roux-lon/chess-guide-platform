@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { LESSONS, LessonSession, getLesson, lessonAfter, lessonStates } from "@/features/lessons";
 import type { DotState } from "@/features/lessons";
-import { getProgressStore } from "@/features/progress";
+import { getProgressStore, waitingForPerson } from "@/features/progress";
 import { ExerciseView } from "./ExerciseView";
 import { Inline, RichText } from "./RichText";
 import { useProgress } from "./useProgress";
@@ -51,7 +51,9 @@ export function LessonScreen({ lessonId }: { lessonId: string }) {
     return (
       <main className="mx-auto max-w-2xl p-6">
         <p role="status" className="text-lg text-ink/70">
-          Getting your lesson ready...
+          {waitingForPerson(snapshot)
+            ? "Connect your diary using the box above, and your lesson will open."
+            : "Getting your lesson ready..."}
         </p>
       </main>
     );

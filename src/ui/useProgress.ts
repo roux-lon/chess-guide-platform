@@ -10,5 +10,7 @@ export function useProgress() {
   useEffect(() => {
     void store.load();
   }, [store]);
-  return { snapshot, store };
+  /** False until the diary has been read once; before that the snapshot is a neutral placeholder. */
+  const settled = snapshot !== store.getServerSnapshot();
+  return { snapshot, store, settled };
 }

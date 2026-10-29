@@ -10,6 +10,7 @@ import {
 } from "@/features/play";
 import type { BotLevel } from "@/features/play";
 import { describeStatus } from "@/features/play/statusText";
+import { useProgress } from "./useProgress";
 import type { Color } from "@/rules";
 import { Board } from "./Board";
 import { CoachDrawer } from "./CoachDrawer";
@@ -42,6 +43,17 @@ export function GameScreen() {
   /** How many comments the player has already seen, for the "new" badge. */
   const [seenCount, setSeenCount] = useState(0);
   const coachButtonRef = useRef<HTMLButtonElement>(null);
+
+  // The bot level lives in the diary's settings. Apply the saved one once it has loaded.
+  const { snapshot: progress, store: progressStore } = useProgress();
+  const appliedSavedLevel = useRef(false);
+  const savedLevel = progress.diary.settings.botLevel;
+  useEffect(() => {
+    if (!progress.ready || appliedSavedLevel.current) return;
+    appliedSavedLevel.current = true;
+    const level = BOT_LEVELS.find((l) => l === savedLevel);
+    if (level) session.setLevel(level);
+  }, [progress.ready, savedLevel, session]);
 
   const status = describeStatus(snap.status, snap.playerColor, snap.botThinking);
   const humanCanMove = snap.legalDests.size > 0;
@@ -173,7 +185,12 @@ export function GameScreen() {
             Bot strength
             <select
               value={snap.level}
-              onChange={(e) => session.setLevel(Number(e.target.value) as BotLevel)}
+              onChange={(e) => {
+                const level = Number(e.target.value) as BotLevel;
+                session.setLevel(level);
+                // Saved after a quiet moment, so changing it a few times writes the file once.
+                void progressStore.updateSettings({ botLevel: level });
+              }}
               className="rounded-[var(--radius-button)] bg-page px-2 py-2"
             >
               {BOT_LEVELS.map((level) => (

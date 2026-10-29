@@ -1,13 +1,36 @@
-export { DIARY_VERSION, DiaryFormatError, createEmptyDiary, parseDiary } from "./diary";
+export { DIARY_VERSION, createEmptyDiary, hasProgress, summarizeDiary } from "./diary";
 export type {
   CoachLogRecord,
   Diary,
   DiarySettings,
+  DiarySummary,
   GameRecord,
   LessonRecord,
   MistakeRecord,
 } from "./diary";
-export type { StorageAdapter } from "./StorageAdapter";
-export { BrowserStorage, CORRUPT_KEY, DIARY_KEY } from "./browserStorage";
-export type { KeyValueStore } from "./browserStorage";
+export { validateDiary } from "./validate";
+export type { ValidationResult } from "./validate";
+export { MIGRATION_STEPS, migrate } from "./migrate";
+export type { MigrateResult, MigrationStep } from "./migrate";
+export { readDiary, readDiaryText } from "./read";
+export type { ReadResult } from "./read";
+export { mergeDiaries } from "./merge";
+export { DIARY_FILENAME, exportFilename, serializeDiary } from "./exportImport";
+export type { FileConnection, SaveOptions, StorageAdapter } from "./StorageAdapter";
+export { PROBLEM_MESSAGES, StorageUnavailableError, needsAttention, problemStatus } from "./status";
+export type { StorageProblem, StorageStatus } from "./status";
+export { FileStorage } from "./FileStorage";
+export { BrowserFallbackStorage, CORRUPT_KEY, DIARY_KEY } from "./fallbackStorage";
 export { MemoryStorage } from "./memoryStorage";
+export { BrowserLegacy, noLegacy } from "./legacy";
+export type { LegacyPort } from "./legacy";
+export { SMALL_KEY, SmallStore } from "./smallStore";
+export type { KeyValueStore } from "./smallStore";
+export { DebouncedWriter } from "./debounce";
+export {
+  createStorageServices,
+  getStorage,
+  getStorageServices,
+  supportsFileSystemAccess,
+} from "./getStorage";
+export type { BrowserLike, StorageServices } from "./getStorage";

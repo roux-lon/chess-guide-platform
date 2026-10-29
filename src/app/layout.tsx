@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { AppNav } from "@/ui/AppNav";
+import { DiaryBanner } from "@/ui/DiaryBanner";
 import { PasscodeGate } from "@/ui/PasscodeGate";
 import "./globals.css";
 
@@ -15,6 +16,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <body className="min-h-full flex flex-col">
         <PasscodeGate>
           <AppNav />
+          <DiaryBanner />
           {children}
         </PasscodeGate>
       </body>

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { LESSONS, STAGES, lessonStates, lessonsInStage, nextLessonId, progressOf } from "@/features/lessons";
+import { waitingForPerson } from "@/features/progress";
 import type { LessonState } from "@/features/lessons";
 import { useProgress } from "./useProgress";
 
@@ -18,7 +19,9 @@ export function LessonMap() {
     return (
       <main className="mx-auto max-w-3xl p-6">
         <p role="status" className="text-lg text-ink/70">
-          Loading your lessons...
+          {waitingForPerson(snapshot)
+            ? "Connect your diary using the box above, and your lessons will appear."
+            : "Loading your lessons..."}
         </p>
       </main>
     );
