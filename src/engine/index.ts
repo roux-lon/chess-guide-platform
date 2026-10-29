@@ -3,7 +3,6 @@ export type { EngineAdapter } from "./EngineAdapter";
 export type { BotLevel, EngineMove, EvaluateOptions, Evaluation, Side } from "./types";
 export { BOT_LEVELS, DEFAULT_LEVEL, LEVELS } from "./levels";
 export type { LevelPreset } from "./levels";
-export { mateToMoverPerspective, sideToMove, toMoverPerspective } from "./perspective";
 export { RandomMoveEngine } from "./RandomMoveEngine";
 export type { LegalMoveProvider } from "./RandomMoveEngine";
 export { FakeEngine } from "./FakeEngine";

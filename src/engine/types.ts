@@ -1,4 +1,4 @@
-export type Side = "white" | "black";
+export type { Side } from "@/lib/perspective";
 
 /** A move in our own format. Squares are algebraic ("e2"). */
 export interface EngineMove {

@@ -19,6 +19,9 @@ Build prompts, one per phase: `docs/prompts/`
 
 Engine notes: `engine/` owns Stockfish. Everything else uses `EngineAdapter` (`init`, `setLevel`, `getBotMove`, `evaluate`, `cancel`, `dispose`). Level presets are data in `engine/levels.ts`. `evaluate` always returns centipawns from White's perspective (`mateIn` too: positive = White mates); use `toMoverPerspective` before judging a move. For tests use `FakeEngine` (scripted) or `FakeUciHost` (fake worker). Never point tests at the real worker.
 
+Coach notes: `coach/` is pure (no React, no browser, no engine import; it takes evaluations as plain numbers). Flow per move: `features/coach/analyzeMove` validates with rules, evaluates before/after (reusing the previous "after"), runs `coach/detectors`, and narrates with a `Narrator` (`TemplateNarrator`; wording lives in `coach/templates/`, thresholds in `coach/config.ts`). Detectors take a `MoveContext` and are tested on fixed FENs with `coach/testHelpers.ts` (`contextFor`). The coach uses a SECOND engine instance (`analysisEngine`) because one engine runs one search at a time. `GameSession` owns the log, hint tiers (reset after every move) and the take-back offer; React only displays them. Add a new detector: new file in `coach/detectors/`, register it in `detectors/index.ts`, add an event type in `events.ts`, template keys in `templates/templates.ts`, and a `describeEvent` case in `narrate.ts` (a test fails until every template key is reachable).
+- Real-engine coach check (manual): `REAL_STOCKFISH=1 npx vitest run tests/realCoach.manual.test.ts`
+
 Notes: chessground (board) is imported only in `src/ui/Board.tsx`; chess.js only in `src/rules/`. `engine/` does not import `rules/`: the random bot gets its legal-move list injected from `features/play/createEngine.ts`.
 
 ## Architecture

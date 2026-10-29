@@ -7,6 +7,11 @@ export function createBotEngine(): EngineAdapter {
   return createStockfishEngine();
 }
 
+/** A second Stockfish just for the coach, so analysis never interrupts the bot. */
+export function createAnalysisEngine(): EngineAdapter {
+  return createStockfishEngine();
+}
+
 /** Random mover wired to the rules layer. Kept for tests and as a fallback. */
 export function createRandomBotEngine(): EngineAdapter {
   return new RandomMoveEngine((fen) =>

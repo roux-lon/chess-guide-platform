@@ -11,3 +11,18 @@ export type {
   PromotionPiece,
   Square,
 } from "./types";
+export {
+  PIECE_VALUES,
+  allHangingPieces,
+  allPieces,
+  attackersOf,
+  defendersOf,
+  hangingInfo,
+  kingSquare,
+  moveToSan,
+  pieceAt,
+  pieceValue,
+  piecesAttackedBy,
+  staticExchange,
+} from "./analysis";
+export type { HangingInfo, PieceOnSquare } from "./analysis";

@@ -1,0 +1,10 @@
+export { COACH_CONFIG, CENTER_SQUARES } from "./config";
+export type { CoachEvent, CoachEventKind } from "./events";
+export type { MoveContext, MoveEvaluation, PieceRef, Who } from "./types";
+export { whoIs } from "./types";
+export { analyzeMoveEvents, takeBackReason } from "./analyze";
+export { buildHintEvents } from "./hints";
+export type { HintInput } from "./hints";
+export { TemplateNarrator } from "./narrate";
+export type { Narration, NarrateInput, Narrator, TermId } from "./narrate";
+export { TAKE_BACK_MESSAGES } from "./templates/templates";

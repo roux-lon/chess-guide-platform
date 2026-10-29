@@ -1,4 +1,4 @@
-import type { Side } from "./types";
+export type Side = "white" | "black";
 
 /** Which side moves next, read from the second field of a FEN. */
 export function sideToMove(fen: string): Side {

@@ -1,7 +1,7 @@
 import { EngineCancelledError, EngineError } from "./EngineAdapter";
 import type { EngineAdapter } from "./EngineAdapter";
 import { DEFAULT_LEVEL, LEVELS } from "./levels";
-import { scoreToWhite, sideToMove } from "./perspective";
+import { scoreToWhite, sideToMove } from "@/lib/perspective";
 import type { UciTransport, UciTransportFactory } from "./transport";
 import type { BotLevel, EngineMove, EvaluateOptions, Evaluation } from "./types";
 import { parseBestMove, parseInfo, uciToMove } from "./uci";

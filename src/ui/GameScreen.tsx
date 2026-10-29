@@ -1,11 +1,18 @@
 "use client";
 
-import { useEffect, useState, useSyncExternalStore } from "react";
-import { BOT_LEVELS, GameSession, LEVELS, createBotEngine } from "@/features/play";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import {
+  BOT_LEVELS,
+  GameSession,
+  LEVELS,
+  createAnalysisEngine,
+  createBotEngine,
+} from "@/features/play";
 import type { BotLevel } from "@/features/play";
 import { describeStatus } from "@/features/play/statusText";
 import type { Color } from "@/rules";
 import { Board } from "./Board";
+import { CoachDrawer } from "./CoachDrawer";
 import { PromotionPicker } from "./PromotionPicker";
 
 const TONE_CLASS = {
@@ -17,7 +24,9 @@ const TONE_CLASS = {
 } as const;
 
 function useSession(): GameSession {
-  const [session] = useState(() => new GameSession({ engine: createBotEngine() }));
+  const [session] = useState(
+    () => new GameSession({ engine: createBotEngine(), analysisEngine: createAnalysisEngine() }),
+  );
   useEffect(() => {
     session.start();
     return () => session.dispose();
@@ -29,9 +38,26 @@ export function GameScreen() {
   const session = useSession();
   const snap = useSyncExternalStore(session.subscribe, session.getSnapshot, session.getSnapshot);
   const [nextColor, setNextColor] = useState<Color>("white");
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  /** How many comments the player has already seen, for the "new" badge. */
+  const [seenCount, setSeenCount] = useState(0);
+  const coachButtonRef = useRef<HTMLButtonElement>(null);
 
   const status = describeStatus(snap.status, snap.playerColor, snap.botThinking);
   const humanCanMove = snap.legalDests.size > 0;
+  const logLength = snap.coachLog.length;
+  const unread = drawerOpen ? 0 : Math.max(0, logLength - seenCount);
+
+  const closeDrawer = useCallback(() => {
+    setSeenCount(logLength);
+    setDrawerOpen(false);
+    coachButtonRef.current?.focus();
+  }, [logLength]);
+
+  const askForHint = () => {
+    setDrawerOpen(true);
+    if (snap.canRequestHint) void session.requestHint();
+  };
 
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-col gap-6 p-4 lg:flex-row lg:items-start">
@@ -70,6 +96,48 @@ export function GameScreen() {
             Something went wrong: {snap.error}
           </p>
         )}
+
+        {snap.takeBackOffer && (
+          <div
+            role="alert"
+            className="flex flex-col gap-2 rounded-[var(--radius-card)] bg-warn/25 p-4 shadow"
+          >
+            <p className="font-semibold">{snap.takeBackOffer.message}</p>
+            <button
+              type="button"
+              onClick={() => session.undo()}
+              className="self-start rounded-[var(--radius-button)] bg-warn px-4 py-2 font-bold text-ink shadow transition hover:brightness-95"
+            >
+              Undo my move
+            </button>
+          </div>
+        )}
+
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            ref={coachButtonRef}
+            type="button"
+            onClick={() => setDrawerOpen(true)}
+            aria-expanded={drawerOpen}
+            aria-controls="coach-drawer"
+            className="relative rounded-[var(--radius-button)] bg-surface px-4 py-2 font-bold text-ink shadow transition hover:bg-brand hover:text-white"
+          >
+            Coach
+            {unread > 0 && (
+              <span className="absolute -right-2 -top-2 rounded-full bg-danger px-2 text-xs font-bold text-white">
+                {unread}
+                <span className="sr-only"> new comments</span>
+              </span>
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={askForHint}
+            className="rounded-[var(--radius-button)] bg-info px-4 py-2 font-bold text-white shadow transition hover:brightness-110"
+          >
+            I&apos;m stuck
+          </button>
+        </div>
 
         <div className="flex flex-wrap items-center gap-2">
           <button
@@ -134,6 +202,16 @@ export function GameScreen() {
           )}
         </section>
       </aside>
+
+      <CoachDrawer
+        open={drawerOpen}
+        onClose={closeDrawer}
+        log={snap.coachLog}
+        hints={snap.hints}
+        canRequestHint={snap.canRequestHint}
+        hintLoading={snap.hintLoading}
+        onRequestHint={() => void session.requestHint()}
+      />
     </main>
   );
 }
