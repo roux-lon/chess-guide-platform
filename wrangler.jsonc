@@ -1,0 +1,10 @@
+{
+  // Tells Cloudflare this is a plain static site: publish the folder made by `npm run build`.
+  // Without this file, Cloudflare guesses "Next.js" and runs a server adapter we do not need.
+  "name": "chess-coach",
+  "compatibility_date": "2026-10-01",
+  "assets": {
+    "directory": "./out",
+    "not_found_handling": "404-page"
+  }
+}
