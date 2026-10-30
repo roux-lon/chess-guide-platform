@@ -1,15 +1,18 @@
 import type { CoachEvent } from "../events";
 import type { MoveContext } from "../types";
 import { captureTrade } from "./captureTrade";
-import { centerControl } from "./centerControl";
 import { checkGiven } from "./checkGiven";
+import { doubleAttack } from "./doubleAttack";
 import { gameOver } from "./gameOver";
-import { goodDevelopment } from "./goodDevelopment";
 import { hangingPiece } from "./hangingPiece";
 import { inCheckWarning } from "./inCheckWarning";
 import { missedThreat } from "./missedThreat";
 import { moveQuality } from "./moveQuality";
-import { threatFromOpponent } from "./threatFromOpponent";
+import { movePurpose } from "./movePurpose";
+import { opportunity } from "./opportunity";
+import { responseToThreat } from "./responseToThreat";
+import { threatCreated } from "./threatCreated";
+import { tradeSequence } from "./tradeSequence";
 
 export type Detector = (ctx: MoveContext) => CoachEvent[];
 
@@ -19,11 +22,14 @@ export const DETECTORS: Detector[] = [
   inCheckWarning,
   hangingPiece,
   missedThreat,
+  tradeSequence,
   captureTrade,
-  threatFromOpponent,
+  doubleAttack,
+  threatCreated,
+  opportunity,
+  responseToThreat,
   moveQuality,
-  goodDevelopment,
-  centerControl,
+  movePurpose,
 ];
 
 /** Runs every detector. The narrator decides which events are worth saying. */
@@ -33,13 +39,17 @@ export function runDetectors(ctx: MoveContext): CoachEvent[] {
 
 export {
   captureTrade,
-  centerControl,
   checkGiven,
+  doubleAttack,
   gameOver,
-  goodDevelopment,
   hangingPiece,
   inCheckWarning,
   missedThreat,
+  movePurpose,
   moveQuality,
-  threatFromOpponent,
+  opportunity,
+  responseToThreat,
+  threatCreated,
+  tradeSequence,
 };
+export { classifyPurpose } from "./movePurpose";

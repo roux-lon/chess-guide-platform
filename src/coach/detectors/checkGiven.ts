@@ -1,5 +1,6 @@
 import { attackersOf, createGame, kingSquare } from "@/rules";
 import type { CoachEvent } from "../events";
+import { meta } from "../types";
 import type { MoveContext } from "../types";
 
 /** The player just put the bot's king in check (not mate: that is the game-over event). */
@@ -15,5 +16,6 @@ export function checkGiven(ctx: MoveContext): CoachEvent[] {
   const by = checkers.some((c) => c.square === move.to)
     ? move.piece
     : (checkers[0]?.type ?? move.piece);
-  return [{ kind: "check_given", actor: "you", by }];
+  // The bot has to answer a check, so it counts as a threat.
+  return [{ kind: "check_given", ...meta("user", "threat"), actor: "you", by }];
 }

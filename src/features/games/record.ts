@@ -29,13 +29,15 @@ export function primaryEventKind(events: readonly CoachEvent[]): string {
   if (has((e) => e.kind === "missed_threat")) return "missed_threat";
   if (has((e) => e.kind === "hanging_piece" && e.owner === "you" && e.actor === "you")) return "hanging_piece";
   if (has((e) => e.kind === "move_quality" && e.quality !== "good")) return "move_quality";
+  if (has((e) => e.kind === "trade_sequence")) return "trade_sequence";
   if (has((e) => e.kind === "capture_trade")) return "capture_trade";
   if (has((e) => e.kind === "in_check_warning")) return "in_check_warning";
+  if (has((e) => e.kind === "double_attack")) return "double_attack";
+  if (has((e) => e.kind === "threat_created")) return "threat_created";
+  if (has((e) => e.kind === "opportunity")) return "opportunity";
   if (has((e) => e.kind === "check_given")) return "check_given";
-  if (has((e) => e.kind === "threat_from_opponent")) return "threat_from_opponent";
-  if (has((e) => e.kind === "hanging_piece")) return "hanging_piece";
-  if (has((e) => e.kind === "good_development")) return "good_development";
-  if (has((e) => e.kind === "center_control")) return "center_control";
+  if (has((e) => e.kind === "response_to_threat")) return "response_to_threat";
+  if (has((e) => e.kind === "move_purpose")) return "move_purpose";
   return "move_played";
 }
 

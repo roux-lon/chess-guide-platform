@@ -1,5 +1,6 @@
 import { attackersOf, createGame, kingSquare } from "@/rules";
 import type { CoachEvent } from "../events";
+import { meta } from "../types";
 import type { MoveContext } from "../types";
 
 /** The bot's move put the player's king in check (not mate). Tells them how many ways out they have. */
@@ -20,6 +21,7 @@ export function inCheckWarning(ctx: MoveContext): CoachEvent[] {
   return [
     {
       kind: "in_check_warning",
+      ...meta("user", "threat"),
       kingSquare: kingAt,
       checkers,
       escapeMoves: game.legalMoves().length,

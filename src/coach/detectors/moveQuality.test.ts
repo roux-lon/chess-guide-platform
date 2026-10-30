@@ -27,7 +27,7 @@ describe("moverScore", () => {
 
 describe("moveQuality", () => {
   it("calls a big drop a blunder", () => {
-    expect(moveQuality(WHITE_E4(cp(20), cp(-400)))).toEqual([
+    expect(moveQuality(WHITE_E4(cp(20), cp(-400)))).toMatchObject([
       { kind: "move_quality", actor: "you", quality: "blunder", lossCp: 420 },
     ]);
   });

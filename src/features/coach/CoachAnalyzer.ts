@@ -1,7 +1,7 @@
 import { COACH_CONFIG, TemplateNarrator } from "@/coach";
 import type { CoachEvent, Narrator, TermId } from "@/coach";
 import type { EngineAdapter, EngineMove, Evaluation } from "@/engine";
-import type { Color, PromotionPiece } from "@/rules";
+import type { Color, MoveInfo, PromotionPiece } from "@/rules";
 import { analyzeMove } from "./analyzeMove";
 import type { CoachLogEntry } from "./types";
 
@@ -12,6 +12,8 @@ export interface CoachJob {
   promotion?: PromotionPiece;
   ply: number;
   playerColor: Color;
+  /** The move played just before this one, if any. */
+  previousMove?: MoveInfo;
 }
 
 interface JobRecord extends CoachJob {

@@ -1,4 +1,4 @@
-import { COACH_CONFIG, TAKE_BACK_MESSAGES, buildHintEvents } from "@/coach";
+import { COACH_CONFIG, HINT_TITLES, TAKE_BACK_MESSAGES, buildHintEvents } from "@/coach";
 import type { CoachEvent, Narrator } from "@/coach";
 import { CoachAnalyzer } from "@/features/coach";
 import type { CoachLogEntry } from "@/features/coach";
@@ -12,8 +12,10 @@ import { dangerHighlights } from "./dangers";
 import type { DangerHighlight } from "./dangers";
 
 export interface HintView {
-  /** 1 = where to look, 2 = what the bot threatens, 3 = the suggested move. */
+  /** 1 = safety check, 2 = plan check, 3 = the suggested move with its reason. */
   tier: number;
+  /** Short name of the tier, such as "Safety check". */
+  title: string;
   text: string;
 }
 
@@ -286,8 +288,8 @@ export class GameSession {
   }
 
   /**
-   * The "I'm stuck" button. Each press reveals the next tier for the current position:
-   * where to look, what the bot threatens, then the suggested move.
+   * The "I'm stuck" button. Each press reveals the next step of the thinking routine for the
+   * current position: a safety check, a plan check, then the suggested move with its reason.
    */
   async requestHint(): Promise<void> {
     const coach = this.coach;
@@ -298,19 +300,25 @@ export class GameSession {
       this.hintLoading = true;
       this.emit();
       const fen = this.game.fen();
+      const history = this.game.history();
       const best = await coach.bestMoveFor(fen);
       if (token !== this.hintToken) return;
       this.hintEvents = buildHintEvents({
         fen,
         playerColor: this.playerColor,
         bestMove: best ? { from: best.from, to: best.to, promotion: best.promotion } : null,
+        ply: history.length + 1,
+        previousMove: history[history.length - 1],
       });
       this.hintLoading = false;
     }
 
     const next = this.hints.length;
     if (next >= this.hintEvents.length) return this.emit();
-    this.hints = [...this.hints, { tier: next + 1, text: coach.narrate([this.hintEvents[next]]) }];
+    this.hints = [
+      ...this.hints,
+      { tier: next + 1, title: HINT_TITLES[next] ?? "", text: coach.narrate([this.hintEvents[next]]) },
+    ];
     this.emit();
   }
 
@@ -338,13 +346,15 @@ export class GameSession {
 
   /** Sends a move that was just played to the coach and returns when its comment is ready. */
   private analyze(fenBefore: string, from: Square, to: Square, promotion?: PromotionPiece) {
+    const history = this.game.history();
     return this.coach?.enqueue({
       fenBefore,
       from,
       to,
       promotion,
-      ply: this.game.history().length,
+      ply: history.length,
       playerColor: this.playerColor,
+      previousMove: history[history.length - 2],
     });
   }
 

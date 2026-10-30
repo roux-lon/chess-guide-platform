@@ -1,9 +1,24 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { COACH_DRAWER_TEXT, COMMENT_KIND_LABEL } from "@/content";
+import type { CommentKindKey } from "@/content";
 import type { Mood } from "@/features/mascot";
 import type { CoachLogEntry, HintView } from "@/features/play";
 import { Mascot } from "./Mascot";
+
+const KIND_CLASS: Record<CommentKindKey, string> = {
+  threat: "bg-danger/15",
+  opportunity: "bg-good/25",
+  trade: "bg-info/15",
+  info: "bg-brand/15",
+};
+
+function Chip({ className, children }: { className: string; children: string }) {
+  return (
+    <span className={`rounded-full px-2 py-0.5 text-xs font-bold text-ink ${className}`}>{children}</span>
+  );
+}
 
 interface Props {
   open: boolean;
@@ -88,7 +103,10 @@ export function CoachDrawer({
           <ol className="space-y-2">
             {hints.map((hint) => (
               <li key={hint.tier} className="rounded-[var(--radius-card)] bg-info/15 p-3 text-sm">
-                <span className="font-bold">Hint {hint.tier} of 3: </span>
+                <span className="font-bold">
+                  {COACH_DRAWER_TEXT.hintLabel(hint.tier, 3)}
+                  {hint.title ? ` · ${hint.title}` : ""}:{" "}
+                </span>
                 {hint.text}
               </li>
             ))}
@@ -132,7 +150,47 @@ export function CoachDrawer({
                       Move {Math.ceil(entry.ply / 2)} · {entry.side === "you" ? "You" : "Bot"} ·{" "}
                       <span className="font-mono normal-case">{entry.moveSan}</span>
                     </p>
-                    <p>{entry.text}</p>
+                    {entry.comment ? (
+                      <>
+                        <div className="mb-2 flex flex-wrap gap-1">
+                          <Chip className={KIND_CLASS[entry.comment.kind]}>
+                            {COMMENT_KIND_LABEL[entry.comment.kind]}
+                          </Chip>
+                          <Chip className="bg-ink/10">
+                            {entry.comment.toMove === "you"
+                              ? COACH_DRAWER_TEXT.yourTurn
+                              : COACH_DRAWER_TEXT.botTurn}
+                          </Chip>
+                        </div>
+                        <p className="text-base font-bold">{entry.comment.headline}</p>
+                        {entry.comment.why && (
+                          <p className="mt-1 text-xs">
+                            <span className="font-bold">{COACH_DRAWER_TEXT.whyLabel} </span>
+                            {entry.comment.why}
+                          </p>
+                        )}
+                        {entry.comment.watch && (
+                          <p className="mt-1 text-xs">
+                            <span className="font-bold">{COACH_DRAWER_TEXT.watchLabel} </span>
+                            {entry.comment.watch}
+                          </p>
+                        )}
+                        {entry.comment.more.length > 0 && (
+                          <details className="mt-2 text-xs">
+                            <summary className="cursor-pointer font-bold">
+                              {COACH_DRAWER_TEXT.moreLabel(entry.comment.more.length)}
+                            </summary>
+                            <ul className="mt-1 list-disc space-y-1 pl-5">
+                              {entry.comment.more.map((line) => (
+                                <li key={line}>{line}</li>
+                              ))}
+                            </ul>
+                          </details>
+                        )}
+                      </>
+                    ) : (
+                      <p>{entry.text}</p>
+                    )}
                   </li>
                 );
               })}

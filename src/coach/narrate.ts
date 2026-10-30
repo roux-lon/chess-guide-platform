@@ -1,10 +1,14 @@
-import { COACH_CONFIG } from "./config";
-import type { CoachEvent } from "./events";
-import type { PieceRef } from "./types";
-import { TEMPLATES } from "./templates/templates";
+import { COACH_CONFIG, EVENT_PRIORITY } from "./config";
+import type { PriorityKey } from "./config";
+import { commentText } from "./comment";
+import type { CoachComment } from "./comment";
+import type { CoachEvent, Purpose } from "./events";
+import { ENGINE_PICK, GENERIC_WATCH, PURPOSE_WHY, TEMPLATES, WATCH_TEMPLATES } from "./templates/templates";
 import type { TemplateGroup } from "./templates/templates";
 import { TERMS } from "./templates/terms";
 import type { TermId } from "./templates/terms";
+import { otherWho } from "./types";
+import type { PieceRef, Who } from "./types";
 
 export type { TermId } from "./templates/terms";
 
@@ -15,7 +19,10 @@ export interface NarrateInput {
 }
 
 export interface Narration {
+  /** The whole thing as plain text (headline, why, watch): what the diary keeps. */
   text: string;
+  /** The structured version for a move. Null for a hint, which is a single paragraph. */
+  comment: CoachComment | null;
   /** Terms this comment explained for the first time. The caller adds them to its explained set. */
   explainedTerms: TermId[];
 }
@@ -25,29 +32,24 @@ export interface Narrator {
   narrate(input: NarrateInput): Narration;
 }
 
-/** Placeholders each template group may use. A test checks every template against this. */
+/** Placeholders each template group may use (headlines and watch lines). A test checks every template against this. */
 export const TEMPLATE_VARS: Record<TemplateGroup, readonly string[]> = {
-  move_played: ["piece", "from", "to", "san", "captured", "promoted"],
   hanging_piece: ["piece", "square", "attacker", "attackerSquare"],
   capture_trade: ["captured", "capturer", "square", "points"],
+  trade_sequence: ["won", "lost", "Won", "points"],
   missed_threat: ["piece", "square", "attacker", "attackerSquare"],
   check_given: ["by"],
   in_check_warning: ["checker", "checkerSquare", "escapes", "kingSquare"],
-  threat_from_opponent: [
-    "attacker",
-    "attackerSquare",
-    "target",
-    "targetSquare",
-    "target2",
-    "target2Square",
-  ],
-  good_development: ["piece", "from", "to"],
-  center_control: ["piece", "square", "squares"],
+  threat_created: ["attacker", "attackerSquare", "target", "targetSquare", "target2", "target2Square"],
+  opportunity: ["target", "targetSquare", "attacker", "attackerSquare", "gain"],
+  double_attack: ["attacker", "attackerSquare", "target", "targetSquare", "target2", "target2Square"],
+  response_to_threat: ["piece", "square"],
+  move_purpose: ["piece", "to"],
   move_quality: [],
   game_over: [],
-  hint_focus: ["piece", "square"],
-  hint_threats: ["pieces", "them"],
-  hint_suggest: ["piece", "from", "to", "san"],
+  hint_safety: ["pieces", "them"],
+  hint_plan: ["piece", "square", "pieces"],
+  hint_suggest: ["piece", "from", "to", "san", "reason"],
 };
 
 export interface DescribedEvent {
@@ -55,59 +57,32 @@ export interface DescribedEvent {
   key: string;
   vars: Record<string, string>;
   terms: TermId[];
-  /** Higher is said first when a move has more to say than fits in one comment. */
-  priority: number;
+  /** Where it ranks when a move has several findings (see EVENT_PRIORITY). */
+  priority: PriorityKey;
+  /** For the engine's suggested move: what the reason line is made from. */
+  reason?: { purpose: Purpose; safeAfter: boolean };
 }
 
-const pieceLabel = (ref: PieceRef) => `${ref.type}`;
 const withSquare = (ref: PieceRef) => `your ${ref.type} on ${ref.square}`;
+const capitalize = (word: string) => word.charAt(0).toUpperCase() + word.slice(1);
 
 function joinList(items: string[]): string {
   if (items.length <= 1) return items.join("");
   return `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`;
 }
 
-/** Picks the template key, fills in the facts, and says which terms and how important. */
-export function describeEvent(event: CoachEvent): DescribedEvent {
+/** Picks the template key, fills in the facts, and says which terms and how important. Null for the plain "move played" event, which is never narrated. */
+export function describeEvent(event: CoachEvent): DescribedEvent | null {
   switch (event.kind) {
-    case "move_played": {
-      const how = event.castle
-        ? "castle"
-        : event.promotion
-          ? "promote"
-          : event.captured
-            ? "capture"
-            : "move";
-      return {
-        group: "move_played",
-        key: `${event.actor}_${how}`,
-        vars: {
-          piece: event.piece,
-          from: event.from,
-          to: event.to,
-          san: event.san,
-          captured: event.captured ?? "",
-          promoted: event.promotion ?? "",
-        },
-        terms: event.castle ? ["castling"] : event.promotion ? ["promotion"] : [],
-        priority: 1000,
-      };
-    }
+    case "move_played":
+      return null;
 
     case "hanging_piece": {
-      const reason = event.reason === "undefended" ? "undefended" : "cheaper";
-      const who =
-        event.owner === "you"
-          ? event.actor === "you"
-            ? "you_left"
-            : "threat"
-          : event.actor === "you"
-            ? "chance"
-            : "bot_left";
+      const reason = event.reason === "cheaper-attacker" ? "cheaper" : event.reason;
       const attacker = event.attackers[0];
       return {
         group: "hanging_piece",
-        key: `${who}_${reason}`,
+        key: `you_left_${reason}`,
         vars: {
           piece: event.piece.type,
           square: event.piece.square,
@@ -115,8 +90,7 @@ export function describeEvent(event: CoachEvent): DescribedEvent {
           attackerSquare: attacker?.square ?? "",
         },
         terms: ["hanging"],
-        // The reason (a loose piece) is said before the verdict ("that was a blunder").
-        priority: who === "you_left" ? 92 : who === "threat" ? 91 : who === "chance" ? 60 : 58,
+        priority: "hanging_piece",
       };
     }
 
@@ -131,7 +105,21 @@ export function describeEvent(event: CoachEvent): DescribedEvent {
           points: String(Math.abs(event.netPoints)),
         },
         terms: event.verdict === "equal" ? ["trade"] : event.verdict === "bad" ? ["piece_value"] : [],
-        priority: event.verdict === "bad" ? 75 : event.verdict === "good" ? 72 : 65,
+        priority: event.verdict === "bad" && event.actor === "you" ? "capture_trade_bad" : "capture_trade",
+      };
+
+    case "trade_sequence":
+      return {
+        group: "trade_sequence",
+        key: event.verdict === "equal" ? (event.won === event.lost ? "equal_same" : "equal_diff") : event.verdict,
+        vars: {
+          won: event.won,
+          lost: event.lost,
+          Won: capitalize(event.won),
+          points: String(Math.abs(event.netForYou)),
+        },
+        terms: event.verdict === "bad" ? ["trade", "piece_value"] : ["trade"],
+        priority: "trade_sequence",
       };
 
     case "missed_threat": {
@@ -146,7 +134,7 @@ export function describeEvent(event: CoachEvent): DescribedEvent {
           attackerSquare: attacker?.square ?? "",
         },
         terms: ["hanging"],
-        priority: 89,
+        priority: "missed_threat",
       };
     }
 
@@ -156,7 +144,7 @@ export function describeEvent(event: CoachEvent): DescribedEvent {
         key: "you",
         vars: { by: event.by },
         terms: ["check"],
-        priority: 80,
+        priority: "check_given",
       };
 
     case "in_check_warning": {
@@ -171,15 +159,15 @@ export function describeEvent(event: CoachEvent): DescribedEvent {
           kingSquare: event.kingSquare,
         },
         terms: ["check"],
-        priority: 88,
+        priority: "in_check_warning",
       };
     }
 
-    case "threat_from_opponent": {
+    case "threat_created": {
       const [first, second] = event.targets;
       return {
-        group: "threat_from_opponent",
-        key: second ? "two" : "one",
+        group: "threat_created",
+        key: `${event.actor}_${second ? "two" : "one"}`,
         vars: {
           attacker: event.attacker.type,
           attackerSquare: event.attacker.square,
@@ -188,31 +176,67 @@ export function describeEvent(event: CoachEvent): DescribedEvent {
           target2: second?.type ?? "",
           target2Square: second?.square ?? "",
         },
-        terms: [],
-        priority: 50,
+        terms: ["threat"],
+        priority: "threat_created",
       };
     }
 
-    case "good_development":
+    case "opportunity":
       return {
-        group: "good_development",
-        key: event.actor,
-        vars: { piece: event.piece, from: event.from, to: event.to },
-        terms: ["development"],
-        priority: 30,
+        group: "opportunity",
+        key: "one",
+        vars: {
+          target: event.target.type,
+          targetSquare: event.target.square,
+          attacker: event.attacker.type,
+          attackerSquare: event.attacker.square,
+          gain: String(event.gain),
+        },
+        terms: [],
+        priority: "opportunity",
       };
 
-    case "center_control":
+    case "double_attack": {
+      const [first, second] = event.targets;
       return {
-        group: "center_control",
-        key: `${event.actor}_${event.how}`,
+        group: "double_attack",
+        key: `${event.actor}${event.givesCheck ? "_check" : ""}`,
         vars: {
-          piece: event.piece,
-          square: event.squares[0] ?? "",
-          squares: joinList(event.squares),
+          attacker: event.attacker.type,
+          attackerSquare: event.attacker.square,
+          target: first?.type ?? "piece",
+          targetSquare: first?.square ?? "",
+          target2: second?.type ?? "piece",
+          target2Square: second?.square ?? "",
         },
-        terms: ["center"],
-        priority: 20,
+        terms: ["double_attack"],
+        priority: "double_attack",
+      };
+    }
+
+    case "response_to_threat":
+      return {
+        group: "response_to_threat",
+        key: event.how,
+        vars: { piece: event.piece.type, square: event.piece.square },
+        terms: [],
+        priority: "response_to_threat",
+      };
+
+    case "move_purpose":
+      return {
+        group: "move_purpose",
+        key: `${event.actor}_${event.purpose}`,
+        vars: { piece: event.piece, to: event.to },
+        terms:
+          event.purpose === "castle"
+            ? ["castling"]
+            : event.purpose === "develop"
+              ? ["development"]
+              : event.purpose === "controlCenter"
+                ? ["center"]
+                : [],
+        priority: "move_purpose",
       };
 
     case "move_quality":
@@ -226,7 +250,12 @@ export function describeEvent(event: CoachEvent): DescribedEvent {
             : event.quality === "mistake"
               ? ["mistake"]
               : [],
-        priority: event.quality === "good" ? 40 : 90,
+        priority:
+          event.quality === "good"
+            ? "move_quality_good"
+            : event.actor === "you"
+              ? "move_quality_bad"
+              : "move_quality_bot_bad",
       };
 
     case "game_over": {
@@ -246,32 +275,36 @@ export function describeEvent(event: CoachEvent): DescribedEvent {
             : event.reason === "stalemate"
               ? ["stalemate"]
               : [],
-        priority: 100,
+        priority: "game_over",
       };
     }
 
-    case "hint_focus": {
-      const key = event.piece ? (event.inCheck ? "piece_in_check" : "piece") : event.inCheck ? "in_check" : "none";
+    case "hint_safety": {
+      const key = event.inCheck ? "check" : event.unsafe.length > 0 ? "pieces" : "none";
       return {
-        group: "hint_focus",
-        key,
-        vars: { piece: event.piece ? pieceLabel(event.piece) : "", square: event.piece?.square ?? "" },
-        terms: event.inCheck ? ["check"] : [],
-        priority: 0,
-      };
-    }
-
-    case "hint_threats": {
-      const key = event.inCheck ? "check" : event.threatened.length > 0 ? "pieces" : "none";
-      return {
-        group: "hint_threats",
+        group: "hint_safety",
         key,
         vars: {
-          pieces: joinList(event.threatened.map(withSquare)),
-          them: event.threatened.length > 1 ? "them" : "it",
+          pieces: joinList(event.unsafe.map(withSquare)),
+          them: event.unsafe.length > 1 ? "them" : "it",
         },
         terms: key === "check" ? ["check"] : key === "pieces" ? ["hanging"] : [],
-        priority: 0,
+        priority: "move_purpose",
+      };
+    }
+
+    case "hint_plan": {
+      const first = event.pieces[0];
+      return {
+        group: "hint_plan",
+        key: event.plan,
+        vars: {
+          piece: first?.type ?? "",
+          square: first?.square ?? "",
+          pieces: joinList(event.pieces.map(withSquare)),
+        },
+        terms: event.plan === "threat" ? ["threat"] : event.plan === "castle" ? ["castling"] : [],
+        priority: "move_purpose",
       };
     }
 
@@ -284,20 +317,29 @@ export function describeEvent(event: CoachEvent): DescribedEvent {
           from: event.suggestion?.from ?? "",
           to: event.suggestion?.to ?? "",
           san: event.suggestion?.san ?? "",
+          reason: "",
         },
         terms: [],
-        priority: 0,
+        priority: "move_purpose",
+        reason: { purpose: event.purpose, safeAfter: event.safeAfter },
       };
   }
 }
 
 function fill(template: string, vars: Record<string, string>): string {
-  return template.replace(/\{(\w+)\}/g, (_, name: string) => vars[name] ?? "");
+  return template.replace(/\{(\w+)\}/g, (_, name: string) => vars[name] ?? "").replace(/\s+/g, " ").trim();
+}
+
+interface Ranked {
+  event: CoachEvent;
+  described: DescribedEvent;
 }
 
 /**
- * Narrates events from the wording in templates/. Each comment is a lead sentence (what was
- * played) plus the most important one or two findings, with at most one new term explained.
+ * Narrates events from the wording in templates/. A move gets one comment with one main idea:
+ * the top-ranked finding is the headline, the purpose of the move is the "why", a line from
+ * the headline's own watch list (or a habit-building one) is the "watch", and the rest of the
+ * findings wait in "more". At most one new term is explained per comment.
  */
 export class TemplateNarrator implements Narrator {
   private readonly lastVariant = new Map<string, number>();
@@ -306,42 +348,94 @@ export class TemplateNarrator implements Narrator {
 
   narrate({ events, explained }: NarrateInput): Narration {
     const hint = events.find((e) => e.kind.startsWith("hint_"));
-    if (hint) return this.compose([describeEvent(hint)], explained);
-
-    const lead = events.find((e) => e.kind === "move_played");
-    const extras = events
-      .filter((e) => e.kind !== "move_played")
-      .map(describeEvent)
-      .sort((a, b) => b.priority - a.priority)
-      .slice(0, COACH_CONFIG.maxExtraSentences);
-
-    return this.compose([...(lead ? [describeEvent(lead)] : []), ...extras], explained);
+    if (hint) return this.narrateHint(hint, explained);
+    return this.narrateMove(events, explained);
   }
 
-  private compose(parts: DescribedEvent[], explained: ReadonlySet<TermId>): Narration {
-    const sentences: string[] = [];
-    const explainedTerms: TermId[] = [];
+  private narrateHint(hint: CoachEvent, explained: ReadonlySet<TermId>): Narration {
+    const described = describeEvent(hint);
+    if (!described) return { text: "", comment: null, explainedTerms: [] };
 
-    for (const part of parts) {
-      sentences.push(fill(this.pick(part), part.vars));
-      if (explainedTerms.length === 0) {
-        const term = part.terms.find((t) => !explained.has(t));
-        if (term) {
-          sentences.push(TERMS[term]);
-          explainedTerms.push(term);
-        }
-      }
+    if (described.reason) {
+      const { purpose, safeAfter } = described.reason;
+      described.vars.reason =
+        purpose !== "other"
+          ? this.pick(`why.${purpose}`, PURPOSE_WHY[purpose])
+          : this.pick(`engine.${safeAfter ? "safe" : "plain"}`, safeAfter ? ENGINE_PICK.safe : ENGINE_PICK.plain);
     }
-    return { text: sentences.join(" "), explainedTerms };
+
+    const sentences = [fill(this.pick(`${described.group}.${described.key}`, TEMPLATES[described.group][described.key]), described.vars)];
+    const explainedTerms: TermId[] = [];
+    const term = described.terms.find((t) => !explained.has(t));
+    if (term) {
+      sentences.push(TERMS[term]);
+      explainedTerms.push(term);
+    }
+    return { text: sentences.join(" "), comment: null, explainedTerms };
+  }
+
+  private narrateMove(events: CoachEvent[], explained: ReadonlySet<TermId>): Narration {
+    const lead = events.find((e) => e.kind === "move_played");
+    const actor: Who = lead?.kind === "move_played" ? lead.actor : "you";
+
+    const ranked: Ranked[] = events
+      .flatMap((event) => {
+        const described = describeEvent(event);
+        return described ? [{ event, described }] : [];
+      })
+      .sort((a, b) => EVENT_PRIORITY[b.described.priority] - EVENT_PRIORITY[a.described.priority]);
+
+    const purposeItem = ranked.find((r) => r.event.kind === "move_purpose");
+    const praise = ranked.find((r) => r.described.priority === "move_quality_good");
+    const top = ranked[0] === praise ? ranked[1] : ranked[0];
+    let headline = top
+      ? this.say(top.described)
+      : fill(this.pick(`move_purpose.${actor}_other`, TEMPLATES.move_purpose[`${actor}_other`]), {});
+    // "Good move!" alone teaches nothing, so praise rides along with the purpose of the move.
+    if (praise && top === purposeItem) headline = `${this.say(praise.described)} ${headline}`;
+    const purpose = purposeItem?.event.kind === "move_purpose" ? purposeItem.event.purpose : "other";
+    let why = this.pick(`why.${purpose}`, PURPOSE_WHY[purpose]);
+
+    const watchLines = top ? WATCH_TEMPLATES[top.described.group]?.[top.described.key] : undefined;
+    const watch = watchLines
+      ? fill(this.pick(`watch.${top.described.group}.${top.described.key}`, watchLines), top.described.vars)
+      : this.pick(`watch.generic.${actor}`, GENERIC_WATCH[actor]);
+
+    const moreItems = ranked
+      .filter((r) => r !== top && r !== purposeItem && r !== praise)
+      .slice(0, COACH_CONFIG.maxMoreItems);
+    const more = moreItems.map((r) => this.say(r.described));
+
+    // Explain one new word, from the most important finding that is actually shown.
+    const shown = [top, ...moreItems, purposeItem].filter((r): r is Ranked => r !== undefined);
+    const explainedTerms: TermId[] = [];
+    const term = shown.flatMap((r) => r.described.terms).find((t) => !explained.has(t));
+    if (term) {
+      why = `${why} ${TERMS[term]}`;
+      explainedTerms.push(term);
+    }
+
+    const comment: CoachComment = {
+      kind: top?.event.nature ?? "info",
+      toMove: otherWho(actor),
+      headline,
+      why,
+      watch,
+      more,
+      events,
+    };
+    return { text: commentText(comment), comment, explainedTerms };
+  }
+
+  private say(described: DescribedEvent): string {
+    return fill(this.pick(`${described.group}.${described.key}`, TEMPLATES[described.group][described.key]), described.vars);
   }
 
   /** A random variant, but never the same one twice in a row for the same template. */
-  private pick({ group, key }: DescribedEvent): string {
-    const variants = TEMPLATES[group][key];
+  private pick(id: string, variants: readonly string[] | undefined): string {
     if (!variants || variants.length === 0) {
-      throw new Error(`No template for ${group}.${key}`);
+      throw new Error(`No template for ${id}`);
     }
-    const id = `${group}.${key}`;
     let index = Math.floor(this.random() * variants.length);
     if (variants.length > 1 && this.lastVariant.get(id) === index) {
       index = (index + 1) % variants.length;

@@ -124,17 +124,29 @@ Write on meaningful moments (end of a lesson, end of a game, plus a debounced sa
 3. The suggested move (only if asked again).
 
 **v1 detectors (start small, add later):**
-- `hanging_piece` (yours or the bot's, undefended and attacked)
-- `capture_trade` (good or bad trade by piece value)
+- `hanging_piece` (my own piece after MY move, judged by static exchange)
+- `threat_created` (my move attacks something worth winning: the bot must answer) and `opportunity` (it is my turn and I can win material now)
+- `trade_sequence` (a capture and its recapture, one story) and `capture_trade` (a single capture judged by material)
+- `double_attack` (a fork: two threats at once)
+- `response_to_threat` (how the bot answered my threat)
+- `move_purpose` (develop, control the center, castle, attack, defend, retreat, ...)
 - `check_given` / `in_check_warning`
-- `threat_from_opponent` (what the last bot move attacks)
-- `good_development` / `center_control` (early game)
 - `blunder` / `mistake` / `good_move` (from engine evaluation swing, thresholds in config)
-- `fork_available` and `pin` (stretch goal for v1, easy to add later)
+- `pin` (stretch goal, easy to add later)
 
 **Bot:** Stockfish with limited skill level and depth, adjustable. Start very weak so a beginner can win.
 
 **Take-back:** if the coach warns "your bishop can be captured for free", offer "Undo my move".
+
+**Coach teaching rules** (phase 8). The coach shows how to think; it does not narrate the board.
+1. **Know whose turn it is.** Every analysis carries who just moved and who is to move. A piece the bot attacks right after MY move is a *threat the bot must answer*, never a chance for me ("can you take it?" is hope-chess). A chance exists only when it is MY turn and I can win material right now, which means only after the bot's move.
+2. **Judge by exchange, not by looks.** "Safe", "hanging", "worth winning" and "good trade" all come from static exchange evaluation (SEE), not from "is it attacked?".
+3. **One story per exchange.** A capture and its recapture is one trade ("Queen trade"), judged by material. The recapture is never described as the other side "leaving a piece unprotected".
+4. **One main idea per comment.** Rank the findings, lead with the top one (the headline), say why the move was played (its purpose) and what to watch (the opponent's best reply or the main danger). Everything else goes under "more".
+5. **Never restate the move.** The log already shows it. If nothing teachable happened, give the purpose of the move in a few words (develop, control the center, castle, retreat...) or say honestly that it was a quiet move.
+6. **Hints are the thinking routine:** (1) Safety check: which of my pieces are in danger, or plainly "nothing is". (2) Plan check: the biggest thing still undone, or the bot's main threat. (3) The engine's move, with its purpose and a reason that can be verified. If the purpose is unclear, say it is the engine's pick.
+7. **Take-back only for real problems** (a piece hanging by SEE, or a blunder), never for noise.
+8. **Tone:** short, encouraging, beginner words. Explain a chess term the first time it appears. Never snarky after a blunder.
 
 ## 7. UI direction: playful
 

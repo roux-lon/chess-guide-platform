@@ -6,7 +6,9 @@ import { inCheckWarning } from "./inCheckWarning";
 describe("checkGiven", () => {
   it("fires when the player checks the bot's king", () => {
     const ctx = contextFor("4k3/8/8/8/8/8/8/R3K3 w - - 0 1", "a1", "a8");
-    expect(checkGiven(ctx)).toEqual([{ kind: "check_given", actor: "you", by: "rook" }]);
+    expect(checkGiven(ctx)).toMatchObject([
+      { kind: "check_given", actor: "you", by: "rook", perspective: "user", nature: "threat" },
+    ]);
   });
 
   it("does NOT fire on an ordinary move", () => {
@@ -29,12 +31,14 @@ describe("inCheckWarning", () => {
 
   it("fires when the bot checks the player and counts the ways out", () => {
     const events = inCheckWarning(contextFor(fen, "h8", "h1"));
-    expect(events).toEqual([
+    expect(events).toMatchObject([
       {
         kind: "in_check_warning",
         kingSquare: "e1",
         checkers: [{ type: "rook", square: "h1" }],
         escapeMoves: 3,
+        perspective: "user",
+        nature: "threat",
       },
     ]);
   });

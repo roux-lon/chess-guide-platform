@@ -31,6 +31,8 @@ export {
   WRONG_FEEDBACK,
 } from "./feedback";
 export type { IllegalKey, WrongKey } from "./feedback";
+export { COACH_DRAWER_TEXT, COMMENT_KIND_LABEL } from "./coachText";
+export type { CommentKindKey } from "./coachText";
 export { LESSONS } from "./lessons";
 export { MISTAKE_TYPES, MISTAKE_TYPE_IDS, isMistakeType, mistakeLabel } from "./mistakes";
 export type { MistakeInfo, MistakeType } from "./mistakes";

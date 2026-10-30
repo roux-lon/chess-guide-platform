@@ -89,7 +89,7 @@ describe("CoachAnalyzer", () => {
       throw new Error("engine down");
     });
     const entry = await analyzer.enqueue(e4);
-    expect(entry?.text).toMatch(/pawn/);
+    expect(entry?.text).toMatch(/middle|center/i);
   });
 
   it("ignores an illegal job without breaking the queue", async () => {
@@ -113,7 +113,9 @@ describe("CoachAnalyzer", () => {
 
   it("shares the 'terms explained' memory with hint narration", () => {
     const { analyzer } = setup();
-    const events: CoachEvent[] = [{ kind: "hint_threats", threatened: [], inCheck: true }];
+    const events: CoachEvent[] = [
+      { kind: "hint_safety", perspective: "user", nature: "info", unsafe: [], inCheck: true },
+    ];
     const first = analyzer.narrate(events);
     const second = analyzer.narrate(events);
     expect(first).toContain("Check");

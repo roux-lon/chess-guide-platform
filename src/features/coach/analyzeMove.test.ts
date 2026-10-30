@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { TemplateNarrator } from "@/coach";
+import { TemplateNarrator, commentText } from "@/coach";
 import type { Evaluation } from "@/engine";
 import { START_FEN } from "@/rules";
 import { analyzeMove } from "./analyzeMove";
@@ -49,7 +49,13 @@ describe("analyzeMove", () => {
     expect(evalBefore?.cpWhite).toBe(20);
     expect(evalAfter?.cpWhite).toBe(30);
     expect(entry).toMatchObject({ ply: 1, moveSan: "e4", side: "you" });
-    expect(entry.text).toMatch(/^You moved your pawn from e2 to e4\./);
+    // The comment teaches (why the move was good) instead of repeating where the pawn went.
+    expect(entry.comment).toMatchObject({ kind: "info", toMove: "bot" });
+    expect(entry.comment?.headline).toMatch(/middle|center/i);
+    expect(entry.comment?.why).not.toBe("");
+    expect(entry.comment?.watch).not.toBe("");
+    expect(entry.text).toBe(commentText(entry.comment!));
+    expect(entry.text).not.toMatch(/moved your pawn from e2 to e4/);
     expect(entry.events[0]).toMatchObject({ kind: "move_played" });
     expect(entry.warning).toBeUndefined();
   });

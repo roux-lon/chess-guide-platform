@@ -1,10 +1,13 @@
-export { COACH_CONFIG, CENTER_SQUARES } from "./config";
-export type { CoachEvent, CoachEventKind } from "./events";
-export type { MoveContext, MoveEvaluation, PieceRef, Who } from "./types";
-export { whoIs } from "./types";
+export { COACH_CONFIG, CENTER_SQUARES, EVENT_PRIORITY, HINT_TITLES } from "./config";
+export type { CoachEvent, CoachEventKind, Purpose } from "./events";
+export type { EventMeta, EventNature, MoveContext, MoveEvaluation, PieceRef, Perspective, Who } from "./types";
+export { otherWho, perspectiveOf, whoIs } from "./types";
+export { commentFromText, commentText } from "./comment";
+export type { CoachComment } from "./comment";
 export { analyzeMoveEvents, takeBackReason } from "./analyze";
 export { buildHintEvents } from "./hints";
 export type { HintInput } from "./hints";
+export { classifyPurpose } from "./detectors/movePurpose";
 export { TemplateNarrator } from "./narrate";
 export type { Narration, NarrateInput, Narrator, TermId } from "./narrate";
 export { TAKE_BACK_MESSAGES } from "./templates/templates";

@@ -26,6 +26,20 @@ export {
   staticExchange,
 } from "./analysis";
 export type { HangingInfo, PieceOnSquare } from "./analysis";
+export {
+  canStillCastle,
+  doubleAttack,
+  isMinorHomeSquare,
+  isPieceSafe,
+  pawnsOn,
+  pieceMobility,
+  piecesNewlyAttacked,
+  undevelopedMinors,
+  unsafePieces,
+  winnableThreats,
+  winningCaptures,
+} from "./tactics";
+export type { DoubleAttack, NewAttack, PieceGain, WinningCapture } from "./tactics";
 export { explainIllegalMove } from "./illegal";
 export type { IllegalReason } from "./illegal";
 export { movesToPgn, parsePgnMoves } from "./pgn";

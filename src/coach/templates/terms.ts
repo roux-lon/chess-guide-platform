@@ -13,7 +13,9 @@ export type TermId =
   | "castling"
   | "promotion"
   | "mistake"
-  | "blunder";
+  | "blunder"
+  | "threat"
+  | "double_attack";
 
 export const TERMS: Record<TermId, string> = {
   check: "(\"Check\" means a king is under attack. The player must fix it right away.)",
@@ -34,4 +36,8 @@ export const TERMS: Record<TermId, string> = {
     "(\"Promotion\" happens when a pawn reaches the far side of the board: it turns into a stronger piece.)",
   mistake: "(A \"mistake\" is a move that gives the other side an advantage.)",
   blunder: "(A \"blunder\" is a really big mistake, like leaving a piece to be captured for free.)",
+  threat:
+    "(A \"threat\" is when a piece could win something on its next move, so the other side has to react.)",
+  double_attack:
+    "(A \"double attack\" is one move that threatens two things at once. The other side can only fix one. Players often call it a \"fork\".)",
 };

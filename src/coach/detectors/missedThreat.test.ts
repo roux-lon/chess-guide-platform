@@ -11,11 +11,14 @@ const ROOK_ATTACKED = "4k3/8/8/8/8/2bQ4/8/R5K1 w - - 0 1";
 describe("missedThreat", () => {
   it("fires when the player ignores an attack on a piece", () => {
     const events = missedThreat(contextFor(KNIGHT_ATTACKED, "e1", "f1"));
-    expect(events).toEqual([
+    expect(events).toMatchObject([
       {
         kind: "missed_threat",
         piece: { type: "knight", square: "c3" },
         attackers: [{ type: "bishop", square: "a5" }],
+        gain: 3,
+        perspective: "user",
+        nature: "threat",
       },
     ]);
   });

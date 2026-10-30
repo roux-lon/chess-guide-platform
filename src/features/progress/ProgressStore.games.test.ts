@@ -25,8 +25,8 @@ const SCHOLARS = ["e4", "e5", "Qh5", "Nc6", "Bc4", "Nf6", "Qxf7#"];
 
 const knight = { type: "knight", square: "c3" } as const;
 const bishop = { type: "bishop", square: "a5" } as const;
-const missed: CoachEvent = { kind: "missed_threat", piece: knight, attackers: [bishop] };
-const played: CoachEvent = { kind: "move_played", actor: "you", piece: "pawn", from: "e2", to: "e4", san: "e4" };
+const missed: CoachEvent = { kind: "missed_threat", perspective: "user", nature: "info", piece: knight, attackers: [bishop], gain: 3 };
+const played: CoachEvent = { kind: "move_played", perspective: "user", nature: "info", actor: "you", piece: "pawn", from: "e2", to: "e4", san: "e4" };
 
 const entries = (...plies: number[]): CoachLogEntry[] =>
   plies.map((ply) => ({

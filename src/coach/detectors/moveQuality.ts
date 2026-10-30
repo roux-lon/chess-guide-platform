@@ -3,6 +3,7 @@ import { mateToMoverPerspective, toMoverPerspective } from "@/lib/perspective";
 import type { Side } from "@/lib/perspective";
 import { COACH_CONFIG } from "../config";
 import type { CoachEvent } from "../events";
+import { meta, perspectiveOf } from "../types";
 import type { MoveContext, MoveEvaluation } from "../types";
 
 /** Score for the mover in centipawns, clamped. Null if the evaluation says nothing usable. */
@@ -33,14 +34,15 @@ export function moveQuality(ctx: MoveContext): CoachEvent[] {
   if (before === null || after === null) return [];
 
   const lossCp = before - after;
+  const tag = meta(perspectiveOf(actor), "info");
   if (lossCp >= COACH_CONFIG.blunderLossCp) {
-    return [{ kind: "move_quality", actor, quality: "blunder", lossCp }];
+    return [{ kind: "move_quality", ...tag, actor, quality: "blunder", lossCp }];
   }
   if (lossCp >= COACH_CONFIG.mistakeLossCp) {
-    return [{ kind: "move_quality", actor, quality: "mistake", lossCp }];
+    return [{ kind: "move_quality", ...tag, actor, quality: "mistake", lossCp }];
   }
   if (lossCp <= COACH_CONFIG.goodMaxLossCp && actor === "you") {
-    return [{ kind: "move_quality", actor, quality: "good", lossCp }];
+    return [{ kind: "move_quality", ...tag, actor, quality: "good", lossCp }];
   }
   return [];
 }

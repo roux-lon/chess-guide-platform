@@ -4,7 +4,7 @@ import type { CoachLogEntry } from "@/features/coach";
 import type { GameRecord } from "@/storage";
 import { classifyGame, classifyMove, countMistakes, toMistakeRecords } from "./mistakes";
 
-const move: CoachEvent = { kind: "move_played", actor: "you", piece: "bishop", from: "f1", to: "b5", san: "Bb5" };
+const move: CoachEvent = { kind: "move_played", perspective: "user", nature: "info", actor: "you", piece: "bishop", from: "f1", to: "b5", san: "Bb5" };
 const knight = { type: "knight", square: "c3" } as const;
 const bishop = { type: "bishop", square: "a5" } as const;
 
@@ -19,6 +19,8 @@ const entry = (events: CoachEvent[], overrides: Partial<CoachLogEntry> = {}): Co
 
 const quality = (q: "good" | "mistake" | "blunder", lossCp: number): CoachEvent => ({
   kind: "move_quality",
+      perspective: "user",
+      nature: "info",
   actor: "you",
   quality: q,
   lossCp,
@@ -28,11 +30,14 @@ describe("classifyMove", () => {
   it("calls a piece left hanging a hanging-piece mistake, priced by the piece", () => {
     const hung: CoachEvent = {
       kind: "hanging_piece",
+      perspective: "user",
+      nature: "info",
       actor: "you",
       owner: "you",
       piece: { type: "queen", square: "d1" },
       attackers: [bishop],
       reason: "undefended",
+      gain: 3,
     };
     expect(classifyMove(entry([hung]))).toEqual({ ply: 5, type: "hanging_piece", lossCp: 900 });
   });
@@ -40,11 +45,14 @@ describe("classifyMove", () => {
   it("uses the engine's cost when it is larger than the guess", () => {
     const hung: CoachEvent = {
       kind: "hanging_piece",
+      perspective: "user",
+      nature: "info",
       actor: "you",
       owner: "you",
       piece: { type: "pawn", square: "d4" },
       attackers: [bishop],
       reason: "undefended",
+      gain: 3,
     };
     expect(classifyMove(entry([hung, quality("blunder", 650)]))).toMatchObject({
       type: "hanging_piece",
@@ -53,13 +61,15 @@ describe("classifyMove", () => {
   });
 
   it("calls an ignored attack a missed threat", () => {
-    const missed: CoachEvent = { kind: "missed_threat", piece: knight, attackers: [bishop] };
+    const missed: CoachEvent = { kind: "missed_threat", perspective: "user", nature: "info", piece: knight, attackers: [bishop], gain: 3 };
     expect(classifyMove(entry([missed]))).toEqual({ ply: 5, type: "missed_threat", lossCp: 300 });
   });
 
   it("calls a losing capture a bad trade", () => {
     const trade: CoachEvent = {
       kind: "capture_trade",
+      perspective: "user",
+      nature: "info",
       actor: "you",
       captured: "pawn",
       capturer: "queen",
@@ -78,53 +88,61 @@ describe("classifyMove", () => {
   it("prefers the most specific type when several apply", () => {
     const hung: CoachEvent = {
       kind: "hanging_piece",
+      perspective: "user",
+      nature: "info",
       actor: "you",
       owner: "you",
       piece: knight,
       attackers: [bishop],
       reason: "undefended",
+      gain: 3,
     };
-    const missed: CoachEvent = { kind: "missed_threat", piece: knight, attackers: [bishop] };
+    const missed: CoachEvent = { kind: "missed_threat", perspective: "user", nature: "info", piece: knight, attackers: [bishop], gain: 3 };
     expect(classifyMove(entry([missed, quality("blunder", 400), hung]))?.type).toBe("hanging_piece");
     expect(classifyMove(entry([quality("blunder", 400), missed]))?.type).toBe("missed_threat");
   });
 
   it("counts a missed threat even when the engine said nothing", () => {
-    const missed: CoachEvent = { kind: "missed_threat", piece: knight, attackers: [bishop] };
+    const missed: CoachEvent = { kind: "missed_threat", perspective: "user", nature: "info", piece: knight, attackers: [bishop], gain: 3 };
     expect(classifyMove(entry([missed]))).not.toBeNull();
   });
 
   it("does NOT count a move the engine called good, even if it looks like a hanging piece", () => {
     const hung: CoachEvent = {
       kind: "hanging_piece",
+      perspective: "user",
+      nature: "info",
       actor: "you",
       owner: "you",
       piece: knight,
       attackers: [bishop],
       reason: "undefended",
+      gain: 3,
     };
     expect(classifyMove(entry([hung, quality("good", 5)]))).toBeNull();
   });
 
-  it("does NOT count ordinary moves, the bot's moves, or the bot's own hanging pieces", () => {
+  it("does NOT count ordinary moves, the bot's moves, or threats the player makes", () => {
     expect(classifyMove(entry([]))).toBeNull();
-    const botHung: CoachEvent = {
-      kind: "hanging_piece",
+    const myThreat: CoachEvent = {
+      kind: "threat_created", perspective: "user", nature: "threat",
       actor: "you",
-      owner: "bot",
-      piece: knight,
-      attackers: [bishop],
-      reason: "undefended",
+      attacker: bishop,
+      targets: [knight],
+      gain: 3,
+      discovered: false,
     };
-    expect(classifyMove(entry([botHung]))).toBeNull();
+    expect(classifyMove(entry([myThreat]))).toBeNull();
     expect(classifyMove(entry([quality("blunder", 700)], { side: "bot" }))).toBeNull();
-    const botSlip: CoachEvent = { kind: "move_quality", actor: "bot", quality: "blunder", lossCp: 700 };
+    const botSlip: CoachEvent = { kind: "move_quality", perspective: "user", nature: "info", actor: "bot", quality: "blunder", lossCp: 700 };
     expect(classifyMove(entry([botSlip]))).toBeNull();
   });
 
   it("does NOT count an even or good trade", () => {
     const even: CoachEvent = {
       kind: "capture_trade",
+      perspective: "user",
+      nature: "info",
       actor: "you",
       captured: "knight",
       capturer: "knight",
@@ -142,7 +160,7 @@ describe("classifyMove", () => {
 
 describe("classifyGame and records", () => {
   it("lists a game's mistakes in order", () => {
-    const missed: CoachEvent = { kind: "missed_threat", piece: knight, attackers: [bishop] };
+    const missed: CoachEvent = { kind: "missed_threat", perspective: "user", nature: "info", piece: knight, attackers: [bishop], gain: 3 };
     const entries = [
       entry([], { ply: 1 }),
       entry([missed], { ply: 3 }),

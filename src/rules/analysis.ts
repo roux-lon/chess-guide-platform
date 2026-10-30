@@ -35,7 +35,7 @@ export interface HangingInfo {
   reason: "undefended" | "cheaper-attacker";
 }
 
-const TYPE_BY_SYMBOL: Record<PieceSymbol, PieceType> = {
+export const TYPE_BY_SYMBOL: Record<PieceSymbol, PieceType> = {
   p: "pawn",
   n: "knight",
   b: "bishop",
@@ -44,9 +44,9 @@ const TYPE_BY_SYMBOL: Record<PieceSymbol, PieceType> = {
   k: "king",
 };
 
-const colorOf = (c: ChessColor): Color => (c === "w" ? "white" : "black");
+export const colorOf = (c: ChessColor): Color => (c === "w" ? "white" : "black");
 const chessColorOf = (c: Color): ChessColor => (c === "white" ? "w" : "b");
-const opposite = (c: Color): Color => (c === "white" ? "black" : "white");
+export const opposite = (c: Color): Color => (c === "white" ? "black" : "white");
 
 export function pieceValue(type: PieceType): number {
   return PIECE_VALUES[type];
@@ -139,32 +139,50 @@ export function allHangingPieces(fen: string, color?: Color): HangingInfo[] {
 }
 
 /**
- * Static exchange: the material `by` nets (in piece-value points) by starting captures
- * on `square`, with both sides then recapturing with their cheapest piece for as long as
- * it pays. Positive means the exchange wins material for `by`. Ignores pins and hidden
- * attackers behind other pieces. Zero if there is nothing there to capture.
+ * Plays the cheapest capture on `square` by `side` on a scratch board, so the next capture
+ * sees the new position (a rook hiding behind the first capturer joins in). Returns the
+ * value of the piece that captured, or undefined if `side` has nothing that can capture.
+ */
+function captureWithCheapest(chess: Chess, square: Square, side: ChessColor): number | undefined {
+  let best: { from: ChessSquare; type: PieceSymbol } | undefined;
+  for (const from of chess.attackers(square as ChessSquare, side)) {
+    const piece = chess.get(from);
+    if (!piece) continue;
+    if (!best || PIECE_VALUES[TYPE_BY_SYMBOL[piece.type]] < PIECE_VALUES[TYPE_BY_SYMBOL[best.type]]) {
+      best = { from, type: piece.type };
+    }
+  }
+  if (!best) return undefined;
+  chess.remove(best.from);
+  chess.remove(square as ChessSquare);
+  chess.put({ type: best.type, color: side }, square as ChessSquare);
+  return PIECE_VALUES[TYPE_BY_SYMBOL[best.type]];
+}
+
+/**
+ * Static exchange evaluation (SEE): the material `by` nets (in piece-value points) by starting
+ * captures on `square`, with both sides then recapturing with their cheapest piece for as long
+ * as it pays. Positive means the exchange wins material for `by`. Pieces hiding behind other
+ * attackers (a battery of rooks, a queen behind a bishop) join in when the front one has
+ * captured. Ignores pins. Zero if there is nothing there to capture.
  */
 export function staticExchange(fen: string, square: Square, by: Color): number {
-  const target = pieceAt(fen, square);
-  if (!target || target.color === by) return 0;
+  const chess = new Chess(fen);
+  const target = chess.get(square as ChessSquare);
+  if (!target || colorOf(target.color) === by) return 0;
 
-  const lists = [
-    attackersOf(fen, square, by).map((p) => PIECE_VALUES[p.type]),
-    attackersOf(fen, square, target.color).map((p) => PIECE_VALUES[p.type]),
-  ];
-  let attackerValue = lists[0].shift();
+  let side: ChessColor = chessColorOf(by);
+  let attackerValue = captureWithCheapest(chess, square, side);
   if (attackerValue === undefined) return 0;
 
   const gain: number[] = [];
-  let targetValue = PIECE_VALUES[target.type];
-  let side = 0;
+  let targetValue = PIECE_VALUES[TYPE_BY_SYMBOL[target.type]];
   let d = 0;
   do {
     gain[d] = targetValue - (d > 0 ? gain[d - 1] : 0);
-    if (Math.max(d > 0 ? -gain[d - 1] : 0, gain[d]) < 0) break;
     targetValue = attackerValue;
-    side ^= 1;
-    attackerValue = lists[side].shift();
+    side = side === "w" ? "b" : "w";
+    attackerValue = captureWithCheapest(chess, square, side);
     d++;
   } while (attackerValue !== undefined);
   while (--d > 0) gain[d - 1] = -Math.max(-gain[d - 1], gain[d]);

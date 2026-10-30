@@ -64,15 +64,22 @@ describe("GameSession coach", () => {
 
       await session.requestHint();
       expect(session.getSnapshot().hints.map((h) => h.tier)).toEqual([1]);
-      expect(session.getSnapshot().hints[0].text).toContain("knight on g1");
+      // Tier 1, the safety check: at the start nothing is in danger, and it says so plainly.
+      expect(session.getSnapshot().hints[0].title).toBe("Safety check");
+      expect(session.getSnapshot().hints[0].text).toContain("Nothing of yours can be won");
 
       await session.requestHint();
       expect(session.getSnapshot().hints.map((h) => h.tier)).toEqual([1, 2]);
-      expect(session.getSnapshot().hints[1].text).toMatch(/threatening|win anything|could win/i);
+      // Tier 2, the plan check: the biggest job is to bring out the pieces still at home.
+      expect(session.getSnapshot().hints[1].title).toBe("Plan check");
+      expect(session.getSnapshot().hints[1].text).toContain("knight on g1");
 
       await session.requestHint();
       const hints = session.getSnapshot().hints;
       expect(hints.map((h) => h.tier)).toEqual([1, 2, 3]);
+      // Tier 3: the move, with what it is for.
+      expect(hints[2].title).toBe("Best move");
+      expect(hints[2].text).toMatch(/bishops out early|pieces out early/);
       expect(hints[2].text).toContain("Nf3");
       expect(hints[2].text).toContain("g1");
       expect(hints[2].text).toContain("f3");

@@ -27,8 +27,8 @@ const SCHOLARS = ["e4", "e5", "Qh5", "Nc6", "Bc4", "Nf6", "Qxf7#"];
 
 const knight = { type: "knight", square: "c3" } as const;
 const attacker = { type: "bishop", square: "a5" } as const;
-const played: CoachEvent = { kind: "move_played", actor: "you", piece: "pawn", from: "e2", to: "e4", san: "e4" };
-const missed: CoachEvent = { kind: "missed_threat", piece: knight, attackers: [attacker] };
+const played: CoachEvent = { kind: "move_played", perspective: "user", nature: "info", actor: "you", piece: "pawn", from: "e2", to: "e4", san: "e4" };
+const missed: CoachEvent = { kind: "missed_threat", perspective: "user", nature: "info", piece: knight, attackers: [attacker], gain: 3 };
 
 const entry = (ply: number, events: CoachEvent[] = [], text = `comment ${ply}`): CoachLogEntry => ({
   ply,
@@ -53,13 +53,13 @@ describe("primaryEventKind", () => {
   it("picks the event that best describes the move", () => {
     expect(primaryEventKind([played])).toBe("move_played");
     expect(primaryEventKind([played, missed])).toBe("missed_threat");
-    expect(primaryEventKind([played, { kind: "game_over", result: "you_win", reason: "checkmate" }, missed])).toBe(
+    expect(primaryEventKind([played, { kind: "game_over", perspective: "user", nature: "info", result: "you_win", reason: "checkmate" }, missed])).toBe(
       "game_over",
     );
-    expect(primaryEventKind([played, { kind: "move_quality", actor: "you", quality: "good", lossCp: 0 }])).toBe(
+    expect(primaryEventKind([played, { kind: "move_quality", perspective: "user", nature: "info", actor: "you", quality: "good", lossCp: 0 }])).toBe(
       "move_played",
     );
-    expect(primaryEventKind([played, { kind: "move_quality", actor: "you", quality: "blunder", lossCp: 500 }])).toBe(
+    expect(primaryEventKind([played, { kind: "move_quality", perspective: "user", nature: "info", actor: "you", quality: "blunder", lossCp: 500 }])).toBe(
       "move_quality",
     );
   });
@@ -68,7 +68,7 @@ describe("primaryEventKind", () => {
 describe("mistakeRecords", () => {
   it("combines mistakes from earlier visits with new ones, in move order, without repeats", () => {
     const restored = [{ ply: 3, type: "missed_threat", lossCp: 300 }];
-    const entries = [entry(1), entry(3, [missed]), entry(7, [{ kind: "move_quality", actor: "you", quality: "blunder", lossCp: 400 }])];
+    const entries = [entry(1), entry(3, [missed]), entry(7, [{ kind: "move_quality", perspective: "user", nature: "info", actor: "you", quality: "blunder", lossCp: 400 }])];
     expect(mistakeRecords(entries, restored)).toEqual([
       { ply: 3, type: "missed_threat", lossCp: 300 },
       { ply: 7, type: "blunder", lossCp: 400 },

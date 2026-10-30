@@ -26,7 +26,7 @@ describe.runIf(process.env.REAL_STOCKFISH === "1")("coach with real Stockfish (m
       playerColor: "white",
     });
     expect(good?.warning).toBeUndefined();
-    expect(good?.text).toMatch(/captured|took/i);
+    expect(good?.text).toMatch(/capture|won|yours/i);
 
     analyzer.reset();
     const bad = await analyzer.enqueue({

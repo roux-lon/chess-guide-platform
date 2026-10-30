@@ -18,6 +18,13 @@ describe("analyzeMoveEvents", () => {
 });
 
 describe("takeBackReason", () => {
+  it("does NOT offer one for a loose pawn, which is not worth an undo", () => {
+    // e4 can be taken by the d5 pawn for free, but a pawn (1 point) is below the take-back limit.
+    const events = analyzeMoveEvents(contextFor("4k3/8/8/3p4/8/8/4P3/4K3 w - - 0 1", "e2", "e4"));
+    expect(events).toContainEqual(expect.objectContaining({ kind: "hanging_piece" }));
+    expect(takeBackReason(events)).toBeNull();
+  });
+
   it("offers a take-back when the player leaves a piece hanging", () => {
     const events = analyzeMoveEvents(contextFor("4k3/8/2p5/8/8/8/8/4KB2 w - - 0 1", "f1", "b5"));
     expect(takeBackReason(events)).toBe("hanging");
@@ -36,7 +43,7 @@ describe("takeBackReason", () => {
   it("does NOT offer one when the player merely attacks the bot's loose piece", () => {
     // Ra1 attacks the loose a5 pawn; the rook itself is safe.
     const events = analyzeMoveEvents(contextFor("4k3/8/8/p7/8/8/8/3RK3 w - - 0 1", "d1", "a1"));
-    expect(events).toContainEqual(expect.objectContaining({ kind: "hanging_piece", owner: "bot" }));
+    expect(events).toContainEqual(expect.objectContaining({ kind: "threat_created", actor: "you" }));
     expect(takeBackReason(events)).toBeNull();
   });
 

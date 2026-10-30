@@ -1,8 +1,8 @@
-import { analyzeMoveEvents, takeBackReason } from "@/coach";
+import { analyzeMoveEvents, otherWho, takeBackReason } from "@/coach";
 import type { MoveEvaluation, Narrator, TermId } from "@/coach";
 import type { Evaluation } from "@/engine";
 import { createGame } from "@/rules";
-import type { Color, PromotionPiece } from "@/rules";
+import type { Color, MoveInfo, PromotionPiece } from "@/rules";
 import type { CoachLogEntry } from "./types";
 
 export interface AnalyzeMoveDeps {
@@ -19,6 +19,8 @@ export interface AnalyzeMoveInput {
   /** 1-based half-move number of this move. */
   ply: number;
   playerColor: Color;
+  /** The move played just before this one, if any, so a recapture is told as part of a trade. */
+  previousMove?: MoveInfo;
   explained: ReadonlySet<TermId>;
 }
 
@@ -52,11 +54,13 @@ export async function analyzeMove(
     ply: input.ply,
     playerColor: input.playerColor,
     actor,
+    toMove: otherWho(actor),
     move,
+    previousMove: input.previousMove,
     evalBefore,
     evalAfter,
   });
-  const { text, explainedTerms } = narrator.narrate({ events, explained: input.explained });
+  const { text, comment, explainedTerms } = narrator.narrate({ events, explained: input.explained });
 
   const warning = actor === "you" ? takeBackReason(events) : null;
   return {
@@ -66,6 +70,7 @@ export async function analyzeMove(
       side: actor,
       events,
       text,
+      ...(comment ? { comment } : {}),
       ...(warning ? { warning } : {}),
     },
     explainedTerms,
