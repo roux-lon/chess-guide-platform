@@ -113,3 +113,31 @@ describe("export helpers", () => {
     expect(exportFilename(new Date("2026-03-09T12:00:00Z"))).toBe("chess-progress-2026-03-09.json");
   });
 });
+
+describe("mergeDiaries: gym history", () => {
+  const pos = (id: string, playedAt: string) => ({
+    id,
+    gameId: id.split(":")[0],
+    ply: 3,
+    playedAt,
+    fen: "4k3/8/8/8/8/8/8/4K3 w - - 0 1",
+    move: { from: "e1", to: "e2" },
+    type: "blunder",
+  });
+
+  it("joins positions by id and takes the larger counts, so importing twice does not double", () => {
+    const a = diary({
+      gym: { positions: [pos("a:3", "2026-01-01T00:00:00Z")], stats: { isItSafe: { asked: 4, correct: 2 } } },
+    });
+    const b = diary({
+      gym: {
+        positions: [pos("a:3", "2026-01-01T00:00:00Z"), pos("b:3", "2026-01-02T00:00:00Z")],
+        stats: { isItSafe: { asked: 6, correct: 5 }, pickOfThree: { asked: 1, correct: 1 } },
+      },
+    });
+    const merged = mergeDiaries(a, b);
+    expect(merged.gym.positions.map((p) => p.id)).toEqual(["a:3", "b:3"]);
+    expect(merged.gym.stats).toEqual({ isItSafe: { asked: 6, correct: 5 }, pickOfThree: { asked: 1, correct: 1 } });
+    expect(mergeDiaries(merged, b).gym).toEqual(merged.gym);
+  });
+});

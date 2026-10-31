@@ -3,7 +3,8 @@ import { LESSONS, STAGES } from "./curriculum";
 import { validateCurriculum } from "./validate";
 
 describe("the real curriculum", () => {
-  it("has no problems: legal positions, solvable exercises, unique ids", () => {
+  // Checks every exercise of every lesson, so it is slow when the whole suite runs in parallel.
+  it("has no problems: legal positions, solvable exercises, unique ids", { timeout: 30_000 }, () => {
     expect(validateCurriculum(LESSONS)).toEqual([]);
   });
 

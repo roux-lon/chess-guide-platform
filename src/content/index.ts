@@ -59,3 +59,17 @@ export type {
   PlaybookSquare,
 } from "./playbook";
 export { OPENING_TEXT } from "./openingText";
+export { GYM_DRILLS } from "./gym";
+export type {
+  Drill,
+  DrillType,
+  IsItSafeDrill,
+  PickChoice,
+  PickOfThreeDrill,
+  PlanId,
+  RoutineStep,
+  SpotDoubleAttackDrill,
+  SpotThreatDrill,
+  WhatsThePlanDrill,
+} from "./gym";
+export { GYM_TEXT, GYM_TYPE_ORDER } from "./gymText";

@@ -1,7 +1,7 @@
 // The diary: everything the app remembers. Shape follows PLAN.md section 4 and is
 // versioned so it can be migrated. Changing it needs a version bump and a migration.
 
-export const DIARY_VERSION = 4;
+export const DIARY_VERSION = 5;
 
 /** How much the coach says during a game. */
 export type CoachingMode = "full" | "quiet" | "off";
@@ -91,6 +91,46 @@ export interface PlaybookRecord {
   completions: PlaybookCompletion[];
 }
 
+/** The gym keeps this many of the most recent mistake positions. */
+export const MAX_MISTAKE_POSITIONS = 40;
+
+/** How many questions were asked and how many were answered right (version 5). */
+export interface AnswerCounts {
+  asked: number;
+  correct: number;
+}
+
+/** A position from one of the person's own games, kept so the gym can turn it into a drill (version 5). */
+export interface MistakePosition {
+  /** `${gameId}:${ply}`, so the same mistake is never kept twice. */
+  id: string;
+  gameId: string;
+  /** The half-move number of the mistake (1 = White's first move). */
+  ply: number;
+  /** When the game was saved, ISO date. */
+  playedAt: string;
+  /** The position just BEFORE the mistaken move; the person is the side to move. */
+  fen: string;
+  /** The move that was played. */
+  move: { from: string; to: string };
+  /** The kind of mistake, as in the game's mistake list. */
+  type: string;
+}
+
+/** Thinking Gym history (version 5). */
+export interface GymRecord {
+  /** Newest last; the app keeps only the most recent ones. */
+  positions: MistakePosition[];
+  /** Per drill type. */
+  stats: Record<string, AnswerCounts>;
+}
+
+/** Think-first history (version 5; filled in by the think-first mode): per question type and per principle. */
+export interface ThinkingRecord {
+  byQuestion: Record<string, AnswerCounts>;
+  byPrinciple: Record<string, AnswerCounts>;
+}
+
 export interface Diary {
   version: typeof DIARY_VERSION;
   /** ISO date of the last save. */
@@ -107,6 +147,10 @@ export interface Diary {
   streak: StreakRecord;
   /** Opening practice history (version 4). */
   playbook: PlaybookRecord;
+  /** Thinking Gym history (version 5). */
+  gym: GymRecord;
+  /** Think-first history (version 5). */
+  thinking: ThinkingRecord;
 }
 
 export const EMPTY_STREAK: StreakRecord = { current: 0, best: 0, lastDay: null };
@@ -122,6 +166,8 @@ export function createEmptyDiary(now: Date = new Date()): Diary {
     xp: 0,
     streak: { ...EMPTY_STREAK },
     playbook: { completions: [] },
+    gym: { positions: [], stats: {} },
+    thinking: { byQuestion: {}, byPrinciple: {} },
   };
 }
 

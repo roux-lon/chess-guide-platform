@@ -1,6 +1,7 @@
-export { DIARY_VERSION, EMPTY_STREAK, createEmptyDiary, hasProgress, summarizeDiary } from "./diary";
+export { DIARY_VERSION, EMPTY_STREAK, MAX_MISTAKE_POSITIONS, createEmptyDiary, hasProgress, summarizeDiary } from "./diary";
 export type {
   ActiveGameRecord,
+  AnswerCounts,
   CoachLogRecord,
   CoachingMode,
   Diary,
@@ -8,11 +9,14 @@ export type {
   DiarySummary,
   GameRecord,
   GameResult,
+  GymRecord,
   LessonRecord,
+  MistakePosition,
   MistakeRecord,
   PlaybookCompletion,
   PlaybookRecord,
   StreakRecord,
+  ThinkingRecord,
 } from "./diary";
 export { validateDiary } from "./validate";
 export type { ValidationResult } from "./validate";

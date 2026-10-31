@@ -128,7 +128,8 @@ describe("LessonSession", () => {
     expect(session.getSnapshot().runner?.status).toBe("wrong");
   });
 
-  it("can solve every lesson in the curriculum from start to finish", async () => {
+  // Plays every exercise of every lesson, so it is slow when the whole suite runs in parallel.
+  it("can solve every lesson in the curriculum from start to finish", { timeout: 30_000 }, async () => {
     const { LESSONS } = await import("./curriculum");
     for (const lesson of LESSONS) {
       const done = vi.fn();

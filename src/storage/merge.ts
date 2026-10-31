@@ -1,4 +1,14 @@
-import type { Diary } from "./diary";
+import { MAX_MISTAKE_POSITIONS } from "./diary";
+import type { AnswerCounts, Diary } from "./diary";
+
+function largerCounts(a: Record<string, AnswerCounts>, b: Record<string, AnswerCounts>): Record<string, AnswerCounts> {
+  const result = { ...a };
+  for (const [key, counts] of Object.entries(b)) {
+    const known = result[key];
+    result[key] = !known || counts.asked > known.asked ? counts : known;
+  }
+  return result;
+}
 
 /**
  * Combines two diaries without losing anything, for bringing progress from one place into
@@ -35,9 +45,20 @@ export function mergeDiaries(base: Diary, incoming: Diary): Diary {
     ...base.playbook.completions,
     ...incoming.playbook.completions.filter((c) => !seen.has(`${c.playedAt}|${c.color}`)),
   ].sort((a, b) => a.playedAt.localeCompare(b.playedAt));
+  // Thinking Gym: positions are the union by id (newest 40 kept); counts take the larger value
+  // per key, so importing the same history twice does not double it.
+  const knownPositions = new Set(base.gym.positions.map((p) => p.id));
+  const positions = [...base.gym.positions, ...incoming.gym.positions.filter((p) => !knownPositions.has(p.id))]
+    .sort((a, b) => a.playedAt.localeCompare(b.playedAt) || a.ply - b.ply)
+    .slice(-MAX_MISTAKE_POSITIONS);
   return {
     ...base,
     playbook: { completions },
+    gym: { positions, stats: largerCounts(base.gym.stats, incoming.gym.stats) },
+    thinking: {
+      byQuestion: largerCounts(base.thinking.byQuestion, incoming.thinking.byQuestion),
+      byPrinciple: largerCounts(base.thinking.byPrinciple, incoming.thinking.byPrinciple),
+    },
     ...(activeGame ? { activeGame } : {}),
     updatedAt: base.updatedAt > incoming.updatedAt ? base.updatedAt : incoming.updatedAt,
     lessons,

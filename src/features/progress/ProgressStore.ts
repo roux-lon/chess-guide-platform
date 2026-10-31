@@ -1,4 +1,5 @@
 import {
+  MAX_MISTAKE_POSITIONS,
   StorageUnavailableError,
   createEmptyDiary,
   exportFilename,
@@ -11,6 +12,9 @@ import {
 } from "@/storage";
 import { localDay } from "@/lib/date";
 import { countMistakes } from "../games/mistakes";
+import { addAnswers } from "../gym/accuracy";
+import type { GymAnswer } from "../gym/accuracy";
+import { positionsFromGame } from "../gym/fromGames";
 import { addActivity, xpForGame, xpForLesson } from "../rewards/rewards";
 import type {
   ActiveGameRecord,
@@ -172,6 +176,25 @@ export class ProgressStore {
     );
   }
 
+  /**
+   * Remembers how a Thinking Gym session went (right and wrong per kind of drill) and saves
+   * right away. It counts as a day of learning for the streak but earns no XP.
+   */
+  async recordGymSession(answers: readonly GymAnswer[]): Promise<boolean> {
+    if (answers.length === 0) return true;
+    await this.load();
+    if (!this.ready) return false;
+    return this.commit(
+      {
+        ...this.diary,
+        updatedAt: this.now().toISOString(),
+        gym: { ...this.diary.gym, stats: addAnswers(this.diary.gym.stats, answers) },
+        streak: addActivity(this.diary.streak, localDay(this.now())),
+      },
+      { immediate: true },
+    );
+  }
+
   /** Changes settings. Saved after a quiet moment, not on every change. */
   async updateSettings(patch: Partial<DiarySettings>): Promise<void> {
     if (!this.ready) return;
@@ -200,10 +223,19 @@ export class ProgressStore {
     );
     const { activeGame: _previous, ...rest } = this.diary;
     void _previous;
+    // The gym keeps the position before each mistake, replacing what an earlier save of this
+    // same game kept, and only the most recent ones.
+    const positions = [
+      ...this.diary.gym.positions.filter((p) => p.gameId !== record.id),
+      ...positionsFromGame(record),
+    ]
+      .sort((a, b) => a.playedAt.localeCompare(b.playedAt) || a.ply - b.ply)
+      .slice(-MAX_MISTAKE_POSITIONS);
     return this.commit(
       {
         ...rest,
         updatedAt: this.now().toISOString(),
+        gym: { ...this.diary.gym, positions },
         games,
         mistakeCounts: countMistakes(games),
         xp: this.diary.xp + (newlyFinished ? xpForGame(record.result) : 0),

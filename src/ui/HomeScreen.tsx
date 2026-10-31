@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { HOME_TEXT, REWARD_TEXT } from "@/content";
+import { GYM_TEXT, HOME_TEXT, REWARD_TEXT } from "@/content";
 import { LESSONS } from "@/features/lessons";
 import { milestone } from "@/features/games";
 import { nextStep } from "@/features/home";
@@ -122,6 +122,16 @@ export function HomeScreen() {
             <span aria-hidden="true">♟ </span>Play the bot
           </span>
           <span className="block">A friendly bot, and a coach for every move.</span>
+        </Link>
+        <Link
+          href="/gym"
+          className="rounded-[var(--radius-card)] bg-surface p-5 shadow transition hover:ring-2 hover:ring-brand sm:col-span-2"
+        >
+          <span className="block text-xl font-extrabold text-brand">
+            <span aria-hidden="true">🧠 </span>
+            {GYM_TEXT.navLabel}
+          </span>
+          <span className="block">{GYM_TEXT.homeBlurb}</span>
         </Link>
       </nav>
     </main>

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { GYM_TEXT } from "@/content";
 import { chipFor } from "@/features/progress";
 import { useProgress } from "./useProgress";
 
@@ -15,6 +16,7 @@ const CHIP_STYLE = {
 const LINKS = [
   { href: "/learn", label: "Learn" },
   { href: "/play", label: "Play the bot" },
+  { href: "/gym", label: GYM_TEXT.navLabel },
   { href: "/progress", label: "Progress" },
 ] as const;
 

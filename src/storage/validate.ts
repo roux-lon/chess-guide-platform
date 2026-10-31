@@ -1,6 +1,10 @@
 import { DIARY_VERSION, createEmptyDiary } from "./diary";
 import type {
   ActiveGameRecord,
+  AnswerCounts,
+  GymRecord,
+  MistakePosition,
+  ThinkingRecord,
   CoachLogRecord,
   CoachingMode,
   Diary,
@@ -132,6 +136,38 @@ export function validateDiary(raw: unknown): ValidationResult {
     }
   }
 
+  const gym: GymRecord = { positions: [], stats: {} };
+  if (raw.gym !== undefined) {
+    const g = raw.gym;
+    if (!isRecord(g) || !Array.isArray(g.positions ?? []) || !isRecord(g.stats ?? {})) {
+      problems.push('"gym" should look like { "positions": [], "stats": {} }.');
+    } else {
+      ((g.positions ?? []) as unknown[]).forEach((entry, index) => {
+        const parsed = parseMistakePosition(entry);
+        if (typeof parsed === "string") problems.push(`Gym position ${index + 1}: ${parsed}`);
+        else gym.positions.push(parsed);
+      });
+      const stats = parseCountsMap(g.stats ?? {});
+      if (typeof stats === "string") problems.push(`"gym.stats" ${stats}`);
+      else gym.stats = stats;
+    }
+  }
+
+  const thinking: ThinkingRecord = { byQuestion: {}, byPrinciple: {} };
+  if (raw.thinking !== undefined) {
+    const t = raw.thinking;
+    if (!isRecord(t)) {
+      problems.push('"thinking" should look like { "byQuestion": {}, "byPrinciple": {} }.');
+    } else {
+      const byQuestion = parseCountsMap(t.byQuestion ?? {});
+      const byPrinciple = parseCountsMap(t.byPrinciple ?? {});
+      if (typeof byQuestion === "string") problems.push(`"thinking.byQuestion" ${byQuestion}`);
+      else thinking.byQuestion = byQuestion;
+      if (typeof byPrinciple === "string") problems.push(`"thinking.byPrinciple" ${byPrinciple}`);
+      else thinking.byPrinciple = byPrinciple;
+    }
+  }
+
   let activeGame: ActiveGameRecord | undefined;
   if (raw.activeGame !== undefined) {
     const parsed = parseActiveGame(raw.activeGame);
@@ -153,8 +189,42 @@ export function validateDiary(raw: unknown): ValidationResult {
       xp,
       streak,
       playbook: { completions },
+      gym,
+      thinking,
       ...(activeGame ? { activeGame } : {}),
     },
+  };
+}
+
+function parseCountsMap(raw: unknown): Record<string, AnswerCounts> | string {
+  if (!isRecord(raw)) return "should be an object.";
+  const result: Record<string, AnswerCounts> = {};
+  for (const [key, value] of Object.entries(raw)) {
+    if (!isRecord(value) || !isCount(value.asked) || !isCount(value.correct) || value.correct > value.asked) {
+      return `entry "${key}" needs whole numbers "asked" and "correct" (correct cannot be more than asked).`;
+    }
+    result[key] = { asked: value.asked, correct: value.correct };
+  }
+  return result;
+}
+
+function parseMistakePosition(raw: unknown): MistakePosition | string {
+  if (!isRecord(raw)) return "should be an object.";
+  if (!isString(raw.id) || !isString(raw.gameId)) return '"id" and "gameId" should be text.';
+  if (!isCount(raw.ply)) return '"ply" should be a whole number, zero or more.';
+  if (!isString(raw.playedAt) || !isString(raw.fen) || !isString(raw.type)) {
+    return '"playedAt", "fen" and "type" should be text.';
+  }
+  const move = raw.move;
+  if (!isRecord(move) || !isString(move.from) || !isString(move.to)) return '"move" needs "from" and "to".';
+  return {
+    id: raw.id,
+    gameId: raw.gameId,
+    ply: raw.ply,
+    playedAt: raw.playedAt,
+    fen: raw.fen,
+    move: { from: move.from, to: move.to },
+    type: raw.type,
   };
 }
 

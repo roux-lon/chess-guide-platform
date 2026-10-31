@@ -59,6 +59,19 @@ export const MIGRATION_STEPS: MigrationStep[] = [
     to: 4,
     run: (raw) => ({ ...raw, version: 4, playbook: raw.playbook ?? { completions: [] } }),
   },
+
+  // Version 5 (phase 10) adds the Thinking Gym history (positions from the person's own
+  // mistakes, accuracy per drill type) and the think-first history. Both start empty.
+  {
+    from: 4,
+    to: 5,
+    run: (raw) => ({
+      ...raw,
+      version: 5,
+      gym: raw.gym ?? { positions: [], stats: {} },
+      thinking: raw.thinking ?? { byQuestion: {}, byPrinciple: {} },
+    }),
+  },
 ];
 
 export type MigrateResult =

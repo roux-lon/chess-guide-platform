@@ -38,7 +38,7 @@ describe("BrowserFallbackStorage", () => {
     const kv = new FakeKeyValueStore();
     kv.setItem(DIARY_KEY, JSON.stringify({ lessons: { pawn: { status: "done", completedAt: "x" } } }));
     const diary = await new BrowserFallbackStorage(kv).load();
-    expect(diary.version).toBe(4);
+    expect(diary.version).toBe(5);
     expect(diary.lessons).toHaveProperty("pawn");
   });
 

@@ -46,6 +46,8 @@ export interface BoardProps {
   freeMoves?: boolean;
   /** Show dots on the squares a selected piece can move to. On by default. */
   showLegalDots?: boolean;
+  /** Called with the square name when the player clicks or taps a square. */
+  onSquareSelect?: (square: string) => void;
 }
 
 /**
@@ -65,13 +67,16 @@ export function Board({
   check,
   freeMoves = false,
   showLegalDots = true,
+  onSquareSelect,
 }: BoardProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const apiRef = useRef<Api | null>(null);
   const onMoveRef = useRef(onMove);
+  const onSelectRef = useRef(onSquareSelect);
 
   useEffect(() => {
     onMoveRef.current = onMove;
+    onSelectRef.current = onSquareSelect;
   });
 
   useEffect(() => {
@@ -86,6 +91,7 @@ export function Board({
       draggable: { showGhost: true },
       premovable: { enabled: false },
       drawable: { enabled: false },
+      events: { select: (key) => onSelectRef.current?.(key) },
     });
     apiRef.current = api;
     return () => {
