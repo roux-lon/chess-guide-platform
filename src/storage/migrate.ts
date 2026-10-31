@@ -52,6 +52,13 @@ export const MIGRATION_STEPS: MigrationStep[] = [
       streak: raw.streak ?? { current: 0, best: 0, lastDay: null },
     }),
   },
+
+  // Version 4 (phase 9) adds the opening playbook history. It starts empty.
+  {
+    from: 3,
+    to: 4,
+    run: (raw) => ({ ...raw, version: 4, playbook: raw.playbook ?? { completions: [] } }),
+  },
 ];
 
 export type MigrateResult =

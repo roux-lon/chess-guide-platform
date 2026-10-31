@@ -9,6 +9,7 @@ import { newId } from "@/lib/id";
 import {
   buildActiveGame,
   buildGameRecord,
+  coachLogRecords,
   recordFromActive,
   resultFromStatus,
   resumeOffer,
@@ -32,6 +33,8 @@ export interface FlowSnapshot {
   session?: GameSession;
   /** A practice position, not a real game: nothing is saved. */
   practice: boolean;
+  /** Opening practice: a checklist game that is not saved as a game until it carries on. */
+  opening: boolean;
   /** The finished game has been written down and its review is ready to open. */
   reviewReady: boolean;
   /** The review of the game that just ended. Present in the "review" phase. */
@@ -73,6 +76,9 @@ export class GameFlow {
   private session?: GameSession;
   private meta?: GameMeta;
   private practice = false;
+  private opening = false;
+  /** The finished opening practice has been written to the diary. */
+  private openingRecorded = false;
   private review?: Review;
   /** Set once the current game has been written down (or is waiting to be). */
   private finished = false;
@@ -132,6 +138,47 @@ export class GameFlow {
     void this.progress.updateSettings({ botLevel: config.level, coachingMode: config.coachingMode });
   }
 
+  /**
+   * Starts opening practice: a game against the bot with the opening checklist beside the board.
+   * Nothing is saved while it is played, except one line in the diary when the practice ends.
+   * An unfinished game that was waiting is left alone.
+   */
+  async startOpening(config: GameConfig): Promise<void> {
+    await this.leave();
+    this.begin(
+      {
+        id: newId(),
+        startedAt: this.now().toISOString(),
+        playerColor: config.playerColor,
+        botLevel: config.level,
+        coachingMode: "quiet",
+      },
+      { opening: true },
+      true,
+    );
+  }
+
+  /**
+   * After opening practice: carries on from the same position as a normal guided game (a new
+   * game in the diary, with the coaching the person last chose).
+   */
+  async continueOpeningAsGame(): Promise<void> {
+    const session = this.session;
+    if (!session || !this.opening) return;
+    const snap = session.getSnapshot();
+    if (this.progress.getSnapshot().diary.activeGame) await this.discardResume();
+    const meta: GameMeta = {
+      id: newId(),
+      startedAt: this.now().toISOString(),
+      playerColor: snap.playerColor,
+      botLevel: snap.level,
+      coachingMode: this.progress.getSnapshot().diary.settings.coachingMode,
+    };
+    this.begin(meta, {
+      restore: { moves: snap.sanMoves, coachLog: coachLogRecords(snap.coachLog), mistakes: [] },
+    });
+  }
+
   /** Continues the unfinished game. False if there is none or it cannot be replayed. */
   async resumeGame(): Promise<boolean> {
     await this.leave();
@@ -167,7 +214,7 @@ export class GameFlow {
   /** The player gives up. The game is saved as abandoned and its review opens. */
   async resign(): Promise<void> {
     const session = this.session;
-    if (!session || this.practice) return;
+    if (!session || this.practice || this.opening) return;
     session.resign();
     await this.finish("abandoned");
   }
@@ -211,6 +258,7 @@ export class GameFlow {
   backToMenu(): void {
     this.closeSession();
     this.practice = false;
+    this.opening = false;
     this.review = undefined;
     this.reviewReady = false;
     this.finished = false;
@@ -229,8 +277,8 @@ export class GameFlow {
     const snap = session.getSnapshot();
     const meta = this.meta;
     const playedAnything = snap.moves.some((m) => m.color === snap.playerColor);
-    const worthSaving = !!meta && !this.practice && !this.finished && !snap.gameOver && playedAnything;
-    const dropActive = !!meta && !this.practice && !this.finished && !snap.gameOver && !playedAnything;
+    const worthSaving = !!meta && !this.practice && !this.opening && !this.finished && !snap.gameOver && playedAnything;
+    const dropActive = !!meta && !this.practice && !this.opening && !this.finished && !snap.gameOver && !playedAnything;
 
     // Capture everything now: the session is about to be closed.
     const liveMeta = meta ? { ...meta, botLevel: snap.level } : undefined;
@@ -258,6 +306,7 @@ export class GameFlow {
 
     this.closeSession();
     this.practice = false;
+    this.opening = false;
     this.phase = "menu";
     this.review = undefined;
     this.reviewReady = false;
@@ -289,10 +338,12 @@ export class GameFlow {
     });
   }
 
-  private begin(meta: GameMeta, extra: Partial<GameSessionOptions>): void {
+  private begin(meta: GameMeta, extra: Partial<GameSessionOptions>, opening = false): void {
     this.closeSession();
     this.meta = meta;
     this.practice = false;
+    this.opening = opening;
+    this.openingRecorded = false;
     this.review = undefined;
     this.reviewReady = false;
     this.finished = false;
@@ -334,6 +385,22 @@ export class GameFlow {
     const meta = this.meta;
     if (!session || this.practice) return this.emit();
     const snap = session.getSnapshot();
+
+    if (this.opening) {
+      // Opening practice is not a saved game; only the end of the practice is written down.
+      if (snap.opening?.ended && !this.openingRecorded) {
+        this.openingRecorded = true;
+        const view = snap.opening;
+        void this.progress.recordPlaybook({
+          playedAt: this.now().toISOString(),
+          color: view.color,
+          goalsDone: view.goals.filter((g) => g.done).map((g) => g.id),
+          complete: view.complete,
+          moves: view.myMoves,
+        });
+      }
+      return this.emit();
+    }
 
     if (snap.gameOver && !snap.resigned && !this.finished && !this.finishing) {
       void this.finish(resultFromStatus(snap.status, snap.playerColor) ?? "abandoned");
@@ -410,6 +477,7 @@ export class GameFlow {
       phase: this.phase,
       session: this.session,
       practice: this.practice,
+      opening: this.opening,
       reviewReady: this.reviewReady,
       review: this.review,
       resume: resumeOffer(progress.diary.activeGame),

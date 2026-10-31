@@ -5,7 +5,7 @@ import { buildActiveGame, buildGameRecord } from "@/features/games";
 import type { GameMeta } from "@/features/games";
 import { createGameFromSan } from "@/rules";
 import { FileStorage, MemoryStorage, SmallStore, serializeDiary, createEmptyDiary } from "@/storage";
-import type { Diary, StorageAdapter } from "@/storage";
+import type { Diary, PlaybookCompletion, StorageAdapter } from "@/storage";
 import { MemoryHandleStore } from "@/storage/handleStore";
 import { FakeFileHandle, FakeKeyValueStore, FakePicker, manualTimers } from "@/storage/testing";
 import { ProgressStore } from "./ProgressStore";
@@ -97,7 +97,7 @@ describe("recording a game", () => {
     await store.recordGame(finished(), { activeGame: null });
     expect(file.writes).toHaveLength(1);
     const saved = JSON.parse(file.content);
-    expect(saved.version).toBe(3);
+    expect(saved.version).toBe(4);
     expect(saved.games[0]).toMatchObject({ id: "game-1", result: "win", playerColor: "white" });
     expect(saved.games[0].coachLog).toHaveLength(2);
     expect(saved.mistakeCounts).toEqual({ missed_threat: 1 });
@@ -269,5 +269,44 @@ describe("the game history after reloading the app and reconnecting", () => {
       ["b", "loss"],
     ]);
     expect(diary.mistakeCounts).toEqual({ missed_threat: 2 });
+  });
+});
+
+describe("recordPlaybook", () => {
+  const completion: PlaybookCompletion = {
+    playedAt: "2026-04-02T12:00:00.000Z",
+    color: "white",
+    goalsDone: ["center", "knights"],
+    complete: false,
+    moves: 12,
+  };
+
+  it("saves the practice straight away, counts a day for the streak, and pays no XP", async () => {
+    const { store, storage } = memoryStore();
+    await store.load();
+    expect(await store.recordPlaybook(completion)).toBe(true);
+    const diary = store.getSnapshot().diary;
+    expect(diary.playbook.completions).toEqual([completion]);
+    expect(diary.xp).toBe(0);
+    expect(diary.streak.current).toBe(1);
+    const saved = await storage.load();
+    expect(saved.playbook.completions).toEqual([completion]);
+  });
+
+  it("keeps every practice, in order", async () => {
+    const { store } = memoryStore();
+    await store.load();
+    await store.recordPlaybook(completion);
+    await store.recordPlaybook({ ...completion, color: "black", complete: true, moves: 8 });
+    expect(store.getSnapshot().diary.playbook.completions.map((c) => c.color)).toEqual(["white", "black"]);
+  });
+
+  it("writes straight away to the diary file", async () => {
+    const file = new FakeFileHandle("chess-progress.json", serializeDiary(createEmptyDiary(T1)));
+    const { store } = fileApp(file);
+    await store.load();
+    await store.recordPlaybook(completion);
+    expect(file.writes).toHaveLength(1);
+    expect(JSON.parse(file.content).playbook.completions).toEqual([completion]);
   });
 });

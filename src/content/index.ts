@@ -47,3 +47,15 @@ export {
 export { REWARD_TEXT, XP_PER_LEVEL, XP_RULES } from "./rewards";
 export { HOME_TEXT } from "./home";
 export { ERROR_TEXT } from "./errors";
+export { PLAYBOOK } from "./playbook";
+export type {
+  BlackReply,
+  Candidate,
+  Caution,
+  CautionRule,
+  Condition,
+  Goal,
+  Playbook,
+  PlaybookSquare,
+} from "./playbook";
+export { OPENING_TEXT } from "./openingText";

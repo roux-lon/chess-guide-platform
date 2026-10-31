@@ -18,12 +18,14 @@ export function PlayScreen() {
         key={snapshot.session.gameId}
         session={snapshot.session}
         practice={snapshot.practice}
+        opening={snapshot.opening}
         reviewReady={snapshot.reviewReady}
         diaryReady={snapshot.diaryReady}
         onResign={() => void run(() => flow.resign())}
         onLeave={() => void run(() => flow.leave())}
         onOpenReview={() => flow.openReview()}
         onEndPractice={() => flow.endPractice()}
+        onContinueOpening={() => void run(() => flow.continueOpeningAsGame())}
         onLevelChange={(level) => void store.updateSettings({ botLevel: level })}
       />
     );
@@ -49,6 +51,7 @@ export function PlayScreen() {
       diaryReady={snapshot.diaryReady}
       busy={busy}
       onStart={(config) => void run(() => flow.startGame(config))}
+      onStartOpening={(config) => void run(() => flow.startOpening(config))}
       onResume={() => void run(() => flow.resumeGame())}
       onDiscard={() => void run(() => flow.discardResume())}
     />

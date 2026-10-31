@@ -7,6 +7,7 @@ import type {
   GameRecord,
   LessonRecord,
   MistakeRecord,
+  PlaybookCompletion,
   StreakRecord,
 } from "./diary";
 
@@ -117,6 +118,20 @@ export function validateDiary(raw: unknown): ValidationResult {
     }
   }
 
+  const completions: PlaybookCompletion[] = [];
+  if (raw.playbook !== undefined) {
+    const pb = raw.playbook;
+    if (!isRecord(pb) || !Array.isArray(pb.completions)) {
+      problems.push('"playbook" should look like { "completions": [] }.');
+    } else {
+      pb.completions.forEach((entry, index) => {
+        const parsed = parseCompletion(entry);
+        if (typeof parsed === "string") problems.push(`Opening practice ${index + 1}: ${parsed}`);
+        else completions.push(parsed);
+      });
+    }
+  }
+
   let activeGame: ActiveGameRecord | undefined;
   if (raw.activeGame !== undefined) {
     const parsed = parseActiveGame(raw.activeGame);
@@ -137,8 +152,25 @@ export function validateDiary(raw: unknown): ValidationResult {
       mistakeCounts,
       xp,
       streak,
+      playbook: { completions },
       ...(activeGame ? { activeGame } : {}),
     },
+  };
+}
+
+function parseCompletion(raw: unknown): PlaybookCompletion | string {
+  if (!isRecord(raw)) return "should be an object.";
+  if (!isString(raw.playedAt)) return '"playedAt" should be text.';
+  if (!isColor(raw.color)) return '"color" should be "white" or "black".';
+  if (!Array.isArray(raw.goalsDone) || !raw.goalsDone.every(isString)) return '"goalsDone" should be a list of text.';
+  if (typeof raw.complete !== "boolean") return '"complete" should be true or false.';
+  if (!isCount(raw.moves)) return '"moves" should be a whole number, zero or more.';
+  return {
+    playedAt: raw.playedAt,
+    color: raw.color,
+    goalsDone: raw.goalsDone as string[],
+    complete: raw.complete,
+    moves: raw.moves,
   };
 }
 

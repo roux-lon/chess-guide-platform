@@ -1,7 +1,7 @@
 // The diary: everything the app remembers. Shape follows PLAN.md section 4 and is
 // versioned so it can be migrated. Changing it needs a version bump and a migration.
 
-export const DIARY_VERSION = 3;
+export const DIARY_VERSION = 4;
 
 /** How much the coach says during a game. */
 export type CoachingMode = "full" | "quiet" | "off";
@@ -73,6 +73,24 @@ export interface StreakRecord {
   lastDay: string | null;
 }
 
+/** One finished run of opening practice (version 4). */
+export interface PlaybookCompletion {
+  /** When the practice ended, ISO date. */
+  playedAt: string;
+  color: "white" | "black";
+  /** Ids of the playbook goals that were done at the end, in the order they are taught. */
+  goalsDone: string[];
+  /** True when every goal on the checklist was done. */
+  complete: boolean;
+  /** Full moves played by the person before the practice ended. */
+  moves: number;
+}
+
+/** Opening practice history (version 4). */
+export interface PlaybookRecord {
+  completions: PlaybookCompletion[];
+}
+
 export interface Diary {
   version: typeof DIARY_VERSION;
   /** ISO date of the last save. */
@@ -87,6 +105,8 @@ export interface Diary {
   /** Experience points earned from lessons and games (version 3). */
   xp: number;
   streak: StreakRecord;
+  /** Opening practice history (version 4). */
+  playbook: PlaybookRecord;
 }
 
 export const EMPTY_STREAK: StreakRecord = { current: 0, best: 0, lastDay: null };
@@ -101,6 +121,7 @@ export function createEmptyDiary(now: Date = new Date()): Diary {
     mistakeCounts: {},
     xp: 0,
     streak: { ...EMPTY_STREAK },
+    playbook: { completions: [] },
   };
 }
 

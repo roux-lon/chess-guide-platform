@@ -10,6 +10,8 @@ export type {
   GameResult,
   LessonRecord,
   MistakeRecord,
+  PlaybookCompletion,
+  PlaybookRecord,
   StreakRecord,
 } from "./diary";
 export { validateDiary } from "./validate";

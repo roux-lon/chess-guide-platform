@@ -48,6 +48,7 @@ describe("GameMenu", () => {
         resume: null,
         diaryReady: true,
         onStart: noop,
+        onStartOpening: noop,
         onResume: noop,
         onDiscard: noop,
         ...props,
@@ -140,6 +141,23 @@ describe("ReviewScreen", () => {
   });
 });
 
+describe("GameMenu opening practice", () => {
+  it("offers opening practice on the menu", () => {
+    const html = render(
+      createElement(GameMenu, {
+        defaults: DEFAULTS,
+        resume: null,
+        diaryReady: true,
+        onStart: noop,
+        onStartOpening: noop,
+        onResume: noop,
+        onDiscard: noop,
+      }),
+    );
+    expect(html).toContain("Practice the opening");
+  });
+});
+
 describe("GameScreen", () => {
   function screen(
     mode: CoachingMode,
@@ -157,17 +175,34 @@ describe("GameScreen", () => {
       createElement(GameScreen, {
         session,
         practice: false,
+        opening: false,
         reviewReady: false,
         diaryReady: true,
         onResign: noop,
         onLeave: noop,
         onOpenReview: noop,
         onEndPractice: noop,
+        onContinueOpening: noop,
         onLevelChange: noop,
         ...props,
       }),
     );
   }
+
+  it("opening practice: shows the checklist and the next step, and no resign", () => {
+    const html = screen("quiet", { opening: true }, { opening: true });
+    expect(html).toContain("Opening practice");
+    for (const label of ["Center", "Knights", "Bishops", "Castle", "Connect rooks"]) expect(html).toContain(label);
+    expect(html).toContain("0 of 5 goals done");
+    expect(html).toContain("Claim the center");
+    expect(html).toContain("Try e4.");
+    expect(html).not.toContain("Resign");
+    expect(html).not.toContain("Leave game");
+  });
+
+  it("a normal game has no opening checklist", () => {
+    expect(screen("quiet")).not.toContain("Opening checklist");
+  });
 
   it("quiet: has the coach, hints and undo", () => {
     const html = screen("quiet");

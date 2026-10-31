@@ -22,7 +22,7 @@ const game = {
 describe("createEmptyDiary", () => {
   it("matches the shape in the plan", () => {
     expect(createEmptyDiary(new Date("2026-01-02T03:04:05Z"))).toEqual({
-      version: 3,
+      version: 4,
       updatedAt: "2026-01-02T03:04:05.000Z",
       settings: { botLevel: 1, coachTone: "playful", coachingMode: "quiet" },
       lessons: {},
@@ -30,6 +30,7 @@ describe("createEmptyDiary", () => {
       mistakeCounts: {},
       xp: 0,
       streak: { current: 0, best: 0, lastDay: null },
+      playbook: { completions: [] },
     });
   });
 
@@ -47,7 +48,7 @@ describe("createEmptyDiary", () => {
 describe("validateDiary", () => {
   it("accepts a full diary and gives back the same thing", () => {
     const raw = {
-      version: 3,
+      version: 4,
       updatedAt: "2026-02-01T00:00:00.000Z",
       settings: { botLevel: 3, coachTone: "playful", coachingMode: "off" },
       lessons: { pawn: DONE },
@@ -55,6 +56,11 @@ describe("validateDiary", () => {
       mistakeCounts: { hanging_piece: 7, missed_check_threat: 3 },
       xp: 240,
       streak: { current: 4, best: 9, lastDay: "2026-02-01" },
+      playbook: {
+        completions: [
+          { playedAt: "2026-02-01T10:00:00.000Z", color: "white", goalsDone: ["center", "knights"], complete: false, moves: 8 },
+        ],
+      },
     };
     const result = validateDiary(raw);
     expect(result.ok).toBe(true);
@@ -62,7 +68,7 @@ describe("validateDiary", () => {
   });
 
   it("fills in missing optional parts with defaults", () => {
-    const result = validateDiary({ version: 3 });
+    const result = validateDiary({ version: 4 });
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.diary.settings).toEqual({ botLevel: 1, coachTone: "playful", coachingMode: "quiet" });
@@ -74,7 +80,7 @@ describe("validateDiary", () => {
 
   it("reports problems instead of repairing them", () => {
     const result = validateDiary({
-      version: 3,
+      version: 4,
       lessons: { good: DONE, bad: { status: "weird" } },
       mistakeCounts: { a: "lots" },
       settings: { botLevel: "high" },
@@ -100,12 +106,12 @@ describe("validateDiary", () => {
   it("insists on the current version", () => {
     expect(validateDiary({ version: 1 }).ok).toBe(false);
     expect(validateDiary({ version: 2 }).ok).toBe(false);
-    expect(validateDiary({ version: 4 }).ok).toBe(false);
+    expect(validateDiary({ version: 3 }).ok).toBe(false);
     expect(validateDiary({}).ok).toBe(false);
   });
 
   it("checks games closely", () => {
-    const bad = (change: object) => validateDiary({ version: 3, games: [{ ...game, ...change }] }).ok;
+    const bad = (change: object) => validateDiary({ version: 4, games: [{ ...game, ...change }] }).ok;
     expect(bad({})).toBe(true);
     expect(bad({ result: "won" })).toBe(false);
     expect(bad({ result: "abandoned" })).toBe(true);
@@ -120,17 +126,42 @@ describe("validateDiary", () => {
   });
 });
 
+describe("playbook history (version 4)", () => {
+  const completion = { playedAt: "2026-02-01T10:00:00.000Z", color: "black", goalsDone: ["center"], complete: false, moves: 6 };
+
+  it("migrates a version 3 diary to an empty playbook without touching the rest", () => {
+    const result = readDiary({ version: 3, xp: 40, lessons: { pawn: DONE } });
+    expect(result.ok && result.diary).toMatchObject({ version: 4, xp: 40, playbook: { completions: [] } });
+  });
+
+  it("keeps an existing playbook during migration", () => {
+    const result = migrate({ version: 3, playbook: { completions: [completion] } });
+    expect(result.ok && result.raw).toMatchObject({ version: 4, playbook: { completions: [completion] } });
+  });
+
+  it("rejects malformed completions", () => {
+    const bad = (change: object) =>
+      validateDiary({ version: 4, playbook: { completions: [{ ...completion, ...change }] } }).ok;
+    expect(bad({})).toBe(true);
+    expect(bad({ color: "red" })).toBe(false);
+    expect(bad({ goalsDone: [1] })).toBe(false);
+    expect(bad({ complete: "yes" })).toBe(false);
+    expect(bad({ moves: -1 })).toBe(false);
+    expect(validateDiary({ version: 4, playbook: [] }).ok).toBe(false);
+  });
+});
+
 describe("migrate", () => {
   it("leaves a current diary alone", () => {
-    const raw = { version: 3, lessons: {} };
-    expect(migrate(raw)).toEqual({ ok: true, raw, from: 3, to: 3 });
+    const raw = { version: 4, lessons: {} };
+    expect(migrate(raw)).toEqual({ ok: true, raw, from: 4, to: 4 });
   });
 
   it("upgrades a diary with no version (written by hand) all the way to the current version", () => {
     const result = migrate({ lessons: { pawn: DONE } });
-    expect(result).toMatchObject({ ok: true, from: 0, to: 3 });
+    expect(result).toMatchObject({ ok: true, from: 0, to: 4 });
     if (result.ok) {
-      expect(result.raw).toMatchObject({ version: 3, lessons: { pawn: DONE }, settings: { coachingMode: "quiet" } });
+      expect(result.raw).toMatchObject({ version: 4, lessons: { pawn: DONE }, settings: { coachingMode: "quiet" } });
     }
   });
 
@@ -156,7 +187,7 @@ describe("migrate", () => {
       expect(result.ok).toBe(true);
       if (result.ok) {
         expect(result.migratedFrom).toBe(1);
-        expect(result.diary.version).toBe(3);
+        expect(result.diary.version).toBe(4);
         expect(result.diary.settings).toEqual({ botLevel: 3, coachTone: "playful", coachingMode: "quiet" });
         expect(result.diary.games[0]).toMatchObject({
           id: "g1",
@@ -200,7 +231,7 @@ describe("migrate", () => {
       expect(result.ok).toBe(true);
       if (result.ok) {
         expect(result.migratedFrom).toBe(2);
-        expect(result.diary.version).toBe(3);
+        expect(result.diary.version).toBe(4);
         expect(result.diary.xp).toBe(0);
         expect(result.diary.streak).toEqual({ current: 0, best: 0, lastDay: null });
         expect(result.diary.lessons.pawn).toEqual(DONE);
@@ -212,17 +243,17 @@ describe("migrate", () => {
 
     it("does not overwrite XP or a streak that is already there", () => {
       const result = migrate({ version: 2, xp: 75, streak: { current: 3, best: 5, lastDay: "2026-03-01" } });
-      expect(result.ok && result.raw).toMatchObject({ version: 3, xp: 75, streak: { current: 3, best: 5, lastDay: "2026-03-01" } });
+      expect(result.ok && result.raw).toMatchObject({ version: 4, xp: 75, streak: { current: 3, best: 5, lastDay: "2026-03-01" } });
     });
 
-    it("takes a version 1 diary all the way to version 3", () => {
+    it("takes a version 1 diary all the way to the current version", () => {
       const result = readDiary({ version: 1, lessons: { pawn: DONE } });
-      expect(result.ok && result.diary).toMatchObject({ version: 3, xp: 0 });
+      expect(result.ok && result.diary).toMatchObject({ version: 4, xp: 0 });
     });
   });
 
   describe("XP and the streak", () => {
-    const valid = (change: object) => validateDiary({ version: 3, ...change });
+    const valid = (change: object) => validateDiary({ version: 4, ...change });
 
     it("are optional and default to nothing", () => {
       const result = valid({});
@@ -263,21 +294,21 @@ describe("migrate", () => {
     };
 
     it("is read when present and absent when not", () => {
-      const withGame = validateDiary({ version: 3, activeGame: active });
+      const withGame = validateDiary({ version: 4, activeGame: active });
       expect(withGame.ok && withGame.diary.activeGame).toEqual(active);
-      const without = validateDiary({ version: 3 });
+      const without = validateDiary({ version: 4 });
       expect(without.ok && "activeGame" in without.diary).toBe(false);
     });
 
     it("is checked closely", () => {
-      const bad = (change: object) => validateDiary({ version: 3, activeGame: { ...active, ...change } }).ok;
+      const bad = (change: object) => validateDiary({ version: 4, activeGame: { ...active, ...change } }).ok;
       expect(bad({})).toBe(true);
       expect(bad({ moves: "e4" })).toBe(false);
       expect(bad({ moves: [1, 2] })).toBe(false);
       expect(bad({ fen: 5 })).toBe(false);
       expect(bad({ playerColor: "red" })).toBe(false);
       expect(bad({ coachLog: [{ ply: 1 }] })).toBe(false);
-      const problems = validateDiary({ version: 3, activeGame: { ...active, fen: 5 } });
+      const problems = validateDiary({ version: 4, activeGame: { ...active, fen: 5 } });
       expect(!problems.ok && problems.problems.join(" ")).toMatch(/Unfinished game/);
     });
 
@@ -349,13 +380,13 @@ describe("readDiary", () => {
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.migratedFrom).toBe(0);
-      expect(result.diary.version).toBe(3);
+      expect(result.diary.version).toBe(4);
       expect(result.diary.lessons.pawn).toEqual(DONE);
     }
   });
 
   it("calls broken data corrupt, with details", () => {
-    const result = readDiary({ version: 3, lessons: { x: 1 } });
+    const result = readDiary({ version: 4, lessons: { x: 1 } });
     expect(result).toMatchObject({ ok: false, kind: "corrupt" });
     if (!result.ok) expect(result.problems.length).toBeGreaterThan(0);
   });

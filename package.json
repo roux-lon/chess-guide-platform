@@ -13,7 +13,8 @@
     "postinstall": "node scripts/copy-engine.mjs",
     "predev": "node scripts/copy-engine.mjs",
     "prebuild": "node scripts/copy-engine.mjs",
-    "postbuild": "node scripts/build-sw.mjs"
+    "postbuild": "node scripts/build-sw.mjs",
+    "verify-playbook": "node scripts/verify-playbook.mjs"
   },
   "dependencies": {
     "chess.js": "^1.4.0",

@@ -29,8 +29,15 @@ export function mergeDiaries(base: Diary, incoming: Diary): Diary {
   // Rewards: keep the larger XP, and the streak that was active more recently.
   const newer = (incoming.streak.lastDay ?? "") > (base.streak.lastDay ?? "") ? incoming.streak : base.streak;
   const streak = { ...newer, best: Math.max(base.streak.best, incoming.streak.best, newer.current) };
+  // Opening practice: the union, keyed by when it ended and which side was played.
+  const seen = new Set(base.playbook.completions.map((c) => `${c.playedAt}|${c.color}`));
+  const completions = [
+    ...base.playbook.completions,
+    ...incoming.playbook.completions.filter((c) => !seen.has(`${c.playedAt}|${c.color}`)),
+  ].sort((a, b) => a.playedAt.localeCompare(b.playedAt));
   return {
     ...base,
+    playbook: { completions },
     ...(activeGame ? { activeGame } : {}),
     updatedAt: base.updatedAt > incoming.updatedAt ? base.updatedAt : incoming.updatedAt,
     lessons,

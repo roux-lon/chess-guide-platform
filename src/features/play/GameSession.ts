@@ -8,6 +8,8 @@ import type { Color, Game, GameStatus, MoveInfo, PromotionPiece, Square } from "
 import { DEFAULT_LEVEL } from "@/engine";
 import type { BotLevel, EngineAdapter } from "@/engine";
 import type { CoachLogRecord, CoachingMode, MistakeRecord } from "@/storage";
+import { openingView } from "@/features/opening";
+import type { OpeningView } from "@/features/opening";
 import { dangerHighlights } from "./dangers";
 import type { DangerHighlight } from "./dangers";
 
@@ -63,6 +65,8 @@ export interface GameSnapshot {
   canRequestHint: boolean;
   /** Set when the player's last move left a piece hanging or was a blunder. */
   takeBackOffer?: TakeBackOffer;
+  /** Opening practice only: the checklist, the next step and a note on the last move. */
+  opening?: OpeningView;
 }
 
 /** What is needed to continue a saved game. */
@@ -99,6 +103,8 @@ export interface GameSessionOptions {
   restore?: RestoreState;
   /** A practice position: the game is not meant to be saved. */
   practice?: boolean;
+  /** Opening practice: the snapshot carries the opening checklist. Not saved as a game. */
+  opening?: boolean;
 }
 
 const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
@@ -111,6 +117,7 @@ export class GameSession {
   private level: BotLevel;
   private readonly coachingMode: CoachingMode;
   private readonly practice: boolean;
+  private readonly opening: boolean;
   private botThinking = false;
   private resigned = false;
   private pendingPromotion?: { from: Square; to: Square };
@@ -147,6 +154,7 @@ export class GameSession {
     startFen,
     restore,
     practice = false,
+    opening = false,
   }: GameSessionOptions) {
     this.gameId = gameId ?? newId();
     this.engine = engine;
@@ -155,6 +163,7 @@ export class GameSession {
     this.playerColor = playerColor;
     this.coachingMode = coachingMode;
     this.practice = practice;
+    this.opening = opening;
     this.botDelayMs = botDelayMs;
     this.coachWaitMs = coachWaitMs;
 
@@ -459,6 +468,7 @@ export class GameSession {
         !this.hintLoading &&
         this.hints.length < COACH_CONFIG.hintTierCount,
       takeBackOffer: this.buildTakeBackOffer(moves),
+      ...(this.opening ? { opening: openingView(this.game.fen(), this.playerColor, moves) } : {}),
     };
   }
 }

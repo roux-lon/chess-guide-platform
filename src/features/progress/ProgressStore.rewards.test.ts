@@ -137,7 +137,7 @@ describe("saving rewards", () => {
     await progress.load();
     await progress.completeLesson("pawn");
     const saved = JSON.parse(file.content);
-    expect(saved.version).toBe(3);
+    expect(saved.version).toBe(4);
     expect(saved.xp).toBe(XP_RULES.lesson);
     expect(saved.streak).toEqual({ current: 1, best: 1, lastDay: "2026-03-09" });
   });

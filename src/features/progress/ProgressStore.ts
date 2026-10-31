@@ -18,6 +18,7 @@ import type {
   DiarySettings,
   GameRecord,
   DiarySummary,
+  PlaybookCompletion,
   LegacyPort,
   SaveOptions,
   SmallStore,
@@ -147,6 +148,24 @@ export class ProgressStore {
         updatedAt: when,
         lessons: { ...this.diary.lessons, [id]: this.diary.lessons[id] ?? { status: "done", completedAt: when } },
         xp: this.diary.xp + (firstTime ? xpForLesson() : 0),
+        streak: addActivity(this.diary.streak, localDay(this.now())),
+      },
+      { immediate: true },
+    );
+  }
+
+  /**
+   * Remembers a finished run of opening practice and saves right away. It counts as a day of
+   * learning for the streak but earns no XP (practice earns none). Returns false if not saved.
+   */
+  async recordPlaybook(completion: PlaybookCompletion): Promise<boolean> {
+    await this.load();
+    if (!this.ready) return false;
+    return this.commit(
+      {
+        ...this.diary,
+        updatedAt: this.now().toISOString(),
+        playbook: { completions: [...this.diary.playbook.completions, completion] },
         streak: addActivity(this.diary.streak, localDay(this.now())),
       },
       { immediate: true },

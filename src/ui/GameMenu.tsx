@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { COACHING_MODE_TEXT } from "@/content";
+import { COACHING_MODE_TEXT, OPENING_TEXT } from "@/content";
 import { BOT_LEVELS, LEVELS } from "@/features/play";
 import type { BotLevel } from "@/features/play";
 import type { GameConfig, ResumeOffer } from "@/features/games";
@@ -22,12 +22,22 @@ interface Props {
   diaryReady: boolean;
   busy?: boolean;
   onStart(config: GameConfig): void;
+  onStartOpening(config: GameConfig): void;
   onResume(): void;
   onDiscard(): void;
 }
 
 /** Before a game: pick the bot's strength, your colour and how much coaching you want. */
-export function GameMenu({ defaults, resume, diaryReady, busy = false, onStart, onResume, onDiscard }: Props) {
+export function GameMenu({
+  defaults,
+  resume,
+  diaryReady,
+  busy = false,
+  onStart,
+  onStartOpening,
+  onResume,
+  onDiscard,
+}: Props) {
   const [level, setLevel] = useState<BotLevel>(defaults.level);
   const [playerColor, setPlayerColor] = useState(defaults.playerColor);
   const [coachingMode, setCoachingMode] = useState(defaults.coachingMode);
@@ -133,9 +143,25 @@ export function GameMenu({ defaults, resume, diaryReady, busy = false, onStart, 
           ))}
         </fieldset>
 
-        <button type="submit" disabled={busy} className={primary}>
-          Start the game
-        </button>
+        <div className="flex flex-wrap gap-3">
+          <button type="submit" disabled={busy} className={primary}>
+            Start the game
+          </button>
+        </div>
+
+        <section aria-label={OPENING_TEXT.menu.title} className="space-y-2 rounded-[var(--radius-card)] bg-info/15 p-4">
+          <h3 className="text-lg font-extrabold">{OPENING_TEXT.menu.title}</h3>
+          <p className="text-sm">{OPENING_TEXT.menu.blurb}</p>
+          <p className="text-xs text-ink/70">Uses the bot strength and colour chosen above.</p>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => onStartOpening({ level, playerColor, coachingMode: "quiet" })}
+            className={secondary}
+          >
+            {OPENING_TEXT.menu.button}
+          </button>
+        </section>
       </form>
     </main>
   );

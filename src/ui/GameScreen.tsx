@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { COACHING_MODE_TEXT, GAME_TEXT } from "@/content";
+import { COACHING_MODE_TEXT, GAME_TEXT, OPENING_TEXT } from "@/content";
 import { BOT_LEVELS, LEVELS } from "@/features/play";
 import type { BotLevel, GameSession } from "@/features/play";
 import { describeStatus } from "@/features/play/statusText";
@@ -11,6 +11,7 @@ import { coachMood } from "@/features/mascot";
 import { CoachDrawer } from "./CoachDrawer";
 import { Confetti } from "./Confetti";
 import { MoveInput } from "./MoveInput";
+import { OpeningPanel } from "./OpeningPanel";
 import { playSound } from "./sound";
 import { usePreferences } from "./usePreferences";
 import { PromotionPicker } from "./PromotionPicker";
@@ -32,6 +33,8 @@ export interface GameScreenProps {
   session: GameSession;
   /** A practice position: nothing is saved. */
   practice: boolean;
+  /** Opening practice: the checklist panel is shown and the game is not saved. */
+  opening: boolean;
   /** The game has been written down and its review is ready. */
   reviewReady: boolean;
   /** The diary is connected, so the game can be saved. */
@@ -41,6 +44,8 @@ export interface GameScreenProps {
   onLeave(): void;
   onOpenReview(): void;
   onEndPractice(): void;
+  /** Opening practice is over: carry on from this position as a normal guided game. */
+  onContinueOpening(): void;
   onLevelChange(level: BotLevel): void;
 }
 
@@ -48,12 +53,14 @@ export interface GameScreenProps {
 export function GameScreen({
   session,
   practice,
+  opening,
   reviewReady,
   diaryReady,
   onResign,
   onLeave,
   onOpenReview,
   onEndPractice,
+  onContinueOpening,
   onLevelChange,
 }: GameScreenProps) {
   const snap = useSyncExternalStore(session.subscribe, session.getSnapshot, session.getSnapshot);
@@ -113,7 +120,7 @@ export function GameScreen({
 
       <aside className="flex w-full flex-col gap-4 lg:w-80">
         <div>
-          <h1 className="text-3xl font-extrabold text-brand">{practice ? "Practice" : "Your game"}</h1>
+          <h1 className="text-3xl font-extrabold text-brand">{practice ? "Practice" : opening ? OPENING_TEXT.pageTitle : "Your game"}</h1>
           <p className="text-sm font-semibold text-ink/70">
             Coaching: {COACHING_MODE_TEXT[snap.coachingMode].label}
           </p>
@@ -122,7 +129,10 @@ export function GameScreen({
         {practice && (
           <p className="rounded-[var(--radius-card)] bg-info/15 p-3 text-sm">{GAME_TEXT.practiceNote}</p>
         )}
-        {!practice && !diaryReady && (
+        {opening && snap.opening && (
+          <OpeningPanel view={snap.opening} onContinue={onContinueOpening} onLeave={onLeave} />
+        )}
+        {!practice && !opening && !diaryReady && (
           <p role="alert" className="rounded-[var(--radius-card)] bg-warn/25 p-3 text-sm">
             {GAME_TEXT.unsavedNote}
           </p>
@@ -169,7 +179,7 @@ export function GameScreen({
           </div>
         )}
 
-        {snap.gameOver && !practice && (
+        {snap.gameOver && !practice && !opening && (
           <div className="flex flex-col gap-2 rounded-[var(--radius-card)] bg-surface p-4 shadow">
             {reviewReady ? (
               <button type="button" onClick={onOpenReview} className={strong}>
@@ -223,13 +233,13 @@ export function GameScreen({
               Undo my move
             </button>
           )}
-          {!practice && snap.canResign && !confirmingResign && (
+          {!practice && !opening && snap.canResign && !confirmingResign && (
             <button type="button" onClick={() => setConfirmingResign(true)} className={light}>
               Resign
             </button>
           )}
           <button type="button" onClick={onLeave} className={light}>
-            {practice || snap.gameOver ? "Back to the menu" : "Leave game"}
+            {practice || opening || snap.gameOver ? "Back to the menu" : "Leave game"}
           </button>
         </div>
 
@@ -253,7 +263,7 @@ export function GameScreen({
             </div>
           </div>
         )}
-        {!practice && !snap.gameOver && (
+        {!practice && !opening && !snap.gameOver && (
           <p className="text-xs text-ink/70">
             Leaving a game keeps it, so you can continue it later from the menu.
           </p>
