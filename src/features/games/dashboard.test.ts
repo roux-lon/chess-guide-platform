@@ -82,7 +82,12 @@ describe("buildDashboard", () => {
   it("names the repeated mistake and suggests the matching lesson", () => {
     const games = inOrder([gameWithMistakes(["hanging_piece"]), gameWithMistakes(["hanging_piece"])]);
     const d = buildDashboard(diaryWith(games), LESSONS);
-    expect(d.mistakes.repeated).toEqual({ type: "hanging_piece", label: "Leaving a piece hanging", count: 2 });
+    expect(d.mistakes.repeated).toEqual({
+      type: "hanging_piece",
+      label: "Leaving a piece hanging",
+      count: 2,
+      principle: { id: "keep-safe", title: "Keep every piece safe or protected" },
+    });
     expect(d.lessonSuggestion?.lessonId).toBe("dont-hang-pieces");
   });
 

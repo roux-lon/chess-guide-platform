@@ -1,11 +1,13 @@
 "use client";
 
-import { REVIEW_TEXT, RESULT_TEXT } from "@/content";
+import Link from "next/link";
+import { PRINCIPLES_TEXT, REVIEW_TEXT, RESULT_TEXT } from "@/content";
 import type { Review, ReviewMistake } from "@/features/games";
 import { Board } from "./Board";
 import { moodLabel, resultMood } from "@/features/mascot";
 import { Confetti } from "./Confetti";
 import { Mascot } from "./Mascot";
+import { PrincipleChip } from "./PrincipleChip";
 
 const button = "rounded-[var(--radius-button)] px-5 py-3 text-lg font-bold shadow transition disabled:opacity-50";
 const primary = `${button} bg-brand text-white hover:bg-brand-dark`;
@@ -68,6 +70,19 @@ export function ReviewScreen({ review, onPractice, onNewGame }: Props) {
               {totalMistakes > mistakes.length &&
                 ` (${totalMistakes} mistakes in all, these are the biggest ${mistakes.length}.)`}
             </p>
+            {review.byPrinciple.length > 0 && (
+              <ul aria-label="Rules that slipped" className="space-y-2 rounded-[var(--radius-card)] bg-warn/20 p-4">
+                {review.byPrinciple.map(({ principle, count }) => (
+                  <li key={principle.id} className="flex flex-wrap items-center gap-2">
+                    <span>{PRINCIPLES_TEXT.reviewGroup(principle.title, count)}</span>
+                    <PrincipleChip id={principle.id} />
+                    <Link href={`/gym?principle=${principle.id}`} className="text-sm font-bold text-brand underline">
+                      {PRINCIPLES_TEXT.practice}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
             <ol className="space-y-4">
               {mistakes.map((mistake) => (
                 <li
@@ -86,6 +101,7 @@ export function ReviewScreen({ review, onPractice, onNewGame }: Props) {
                     <h3 className="text-lg font-extrabold">
                       Move {mistake.moveNumber}: {mistake.label}
                     </h3>
+                    <PrincipleChip id={mistake.principleId} />
                     <p className="text-sm text-ink/70">
                       You played <strong className="font-mono">{mistake.san}</strong> (the red arrow). It cost about{" "}
                       {pawns(mistake.lossCp)} {pawns(mistake.lossCp) === "1" ? "pawn" : "pawns"} of value.

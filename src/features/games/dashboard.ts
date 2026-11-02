@@ -1,5 +1,7 @@
 import { mistakeLabel } from "@/content";
 import type { Stage } from "@/content";
+import { principleById } from "@/content";
+import { principleOfMistake } from "@/features/principles/principles";
 import type { Diary } from "@/storage";
 import { milestone } from "./milestone";
 import type { Milestone } from "./milestone";
@@ -32,13 +34,18 @@ export interface Dashboard {
     /** Mistakes in each of the latest finished games, oldest first, to show a trend. */
     recentGames: GameMistakes[];
     /** The mistake that keeps coming back, if one does. */
-    repeated: { type: string; label: string; count: number } | null;
+    repeated: { type: string; label: string; count: number; principle?: { id: string; title: string } } | null;
   };
   lessonSuggestion: LessonSuggestion | null;
   levelSuggestion: LevelSuggestion | null;
   milestone: Milestone;
   /** An unfinished game is waiting to be continued. */
   hasUnfinishedGame: boolean;
+}
+
+function repeatedPrinciple(type: string): { principle?: { id: string; title: string } } {
+  const principle = principleById(principleOfMistake(type) ?? "");
+  return principle ? { principle: { id: principle.id, title: principle.title } } : {};
 }
 
 /** How many recent games the trend shows. */
@@ -89,7 +96,12 @@ export function buildDashboard(
         count: g.mistakes.length,
       })),
       repeated: repeated
-        ? { type: repeated.type, label: mistakeLabel(repeated.type), count: repeated.count }
+        ? {
+            type: repeated.type,
+            label: mistakeLabel(repeated.type),
+            count: repeated.count,
+            ...repeatedPrinciple(repeated.type),
+          }
         : null,
     },
     lessonSuggestion: suggestLesson(diary.games, lessons),

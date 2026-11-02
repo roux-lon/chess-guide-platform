@@ -34,8 +34,8 @@ export { BrowserFallbackStorage, CORRUPT_KEY, DIARY_KEY } from "./fallbackStorag
 export { MemoryStorage } from "./memoryStorage";
 export { BrowserLegacy, noLegacy } from "./legacy";
 export type { LegacyPort } from "./legacy";
-export { DEFAULT_PREFS, SMALL_KEY, SmallStore } from "./smallStore";
-export type { KeyValueStore, Prefs } from "./smallStore";
+export { DEFAULT_PREFS, SMALL_KEY, SmallStore, THINK_FIRST_MODES } from "./smallStore";
+export type { KeyValueStore, Prefs, ThinkFirstMode } from "./smallStore";
 export { DebouncedWriter } from "./debounce";
 export {
   createStorageServices,

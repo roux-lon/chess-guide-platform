@@ -3,6 +3,7 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { GameFlow } from "@/features/games";
 import { createAnalysisEngine, createBotEngine } from "@/features/play";
+import { getPreferencesStore } from "@/features/preferences";
 import { getProgressStore } from "@/features/progress";
 import { useProgress } from "./useProgress";
 
@@ -18,6 +19,7 @@ export function useGameFlow() {
         progress: getProgressStore(),
         createBotEngine,
         createAnalysisEngine,
+        thinkFirstMode: () => getPreferencesStore().getSnapshot().thinkFirst,
       }),
   );
   const snapshot = useSyncExternalStore(flow.subscribe, flow.getSnapshot, flow.getSnapshot);

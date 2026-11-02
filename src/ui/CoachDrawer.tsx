@@ -5,7 +5,9 @@ import { COACH_DRAWER_TEXT, COMMENT_KIND_LABEL } from "@/content";
 import type { CommentKindKey } from "@/content";
 import type { Mood } from "@/features/mascot";
 import type { CoachLogEntry, HintView } from "@/features/play";
+import { principleOfEvents } from "@/features/principles";
 import { Mascot } from "./Mascot";
+import { PrincipleChip } from "./PrincipleChip";
 
 const KIND_CLASS: Record<CommentKindKey, string> = {
   threat: "bg-danger/15",
@@ -161,6 +163,7 @@ export function CoachDrawer({
                               ? COACH_DRAWER_TEXT.yourTurn
                               : COACH_DRAWER_TEXT.botTurn}
                           </Chip>
+                          <PrincipleChip id={principleOfEvents(entry.events)} />
                         </div>
                         <p className="text-base font-bold">{entry.comment.headline}</p>
                         {entry.comment.why && (

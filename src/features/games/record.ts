@@ -1,4 +1,5 @@
 import type { CoachEvent } from "@/coach";
+import { eventLabel } from "@/features/principles/principles";
 import type { CoachLogEntry } from "@/features/coach";
 import { createGameFromSan, movesToPgn } from "@/rules";
 import type { Color, GameStatus } from "@/rules";
@@ -49,7 +50,7 @@ export function resultFromStatus(status: GameStatus, playerColor: Color): GameRe
 }
 
 export function coachLogRecords(entries: readonly CoachLogEntry[]): CoachLogRecord[] {
-  return entries.map((e) => ({ ply: e.ply, event: primaryEventKind(e.events), text: e.text }));
+  return entries.map((e) => ({ ply: e.ply, event: eventLabel(primaryEventKind(e.events), e.events), text: e.text }));
 }
 
 /**

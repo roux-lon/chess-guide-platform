@@ -15,6 +15,7 @@ import { OpeningPanel } from "./OpeningPanel";
 import { playSound } from "./sound";
 import { usePreferences } from "./usePreferences";
 import { PromotionPicker } from "./PromotionPicker";
+import { ThinkFirstCard } from "./ThinkFirstCard";
 
 const TONE_CLASS = {
   neutral: "bg-surface text-ink",
@@ -104,7 +105,11 @@ export function GameScreen({
           legalDests={snap.legalDests}
           lastMove={snap.lastMove}
           check={snap.status.inCheck ? snap.turn : undefined}
-          highlights={snap.dangers}
+          highlights={[
+            ...snap.dangers,
+            ...(snap.thinking?.dangerSquares ?? []).map((square) => ({ square, kind: "danger" as const })),
+          ]}
+          arrows={snap.thinking?.arrows}
           onMove={(from, to) => session.attemptMove(from, to)}
         />
         {snap.pendingPromotion && (
@@ -145,6 +150,14 @@ export function GameScreen({
         >
           {status.text}
         </div>
+
+        {snap.thinking && !snap.gameOver && (
+          <ThinkFirstCard
+            thinking={snap.thinking}
+            onAnswer={(index) => session.answerThinking(index)}
+            onSkip={() => session.skipThinking()}
+          />
+        )}
 
         {snap.latestComment && !snap.gameOver && (
           <p className="rounded-[var(--radius-card)] bg-brand/10 p-4 text-sm" aria-label="Latest comment from the coach">

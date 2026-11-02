@@ -11,9 +11,15 @@ export const SMALL_KEY = "chess-coach.small";
 export interface Prefs {
   sound: boolean;
   confetti: boolean;
+  /** How often the game asks a thinking question before my move. */
+  thinkFirst: ThinkFirstMode;
 }
 
-export const DEFAULT_PREFS: Prefs = { sound: false, confetti: true };
+export type ThinkFirstMode = "off" | "sometimes" | "every";
+
+export const THINK_FIRST_MODES: readonly ThinkFirstMode[] = ["off", "sometimes", "every"];
+
+export const DEFAULT_PREFS: Prefs = { sound: false, confetti: true, thinkFirst: "sometimes" };
 
 interface SmallData {
   prefs?: Partial<Prefs>;
@@ -60,6 +66,9 @@ export class SmallStore {
     return {
       sound: typeof saved?.sound === "boolean" ? saved.sound : DEFAULT_PREFS.sound,
       confetti: typeof saved?.confetti === "boolean" ? saved.confetti : DEFAULT_PREFS.confetti,
+      thinkFirst: THINK_FIRST_MODES.includes(saved?.thinkFirst as ThinkFirstMode)
+        ? (saved?.thinkFirst as ThinkFirstMode)
+        : DEFAULT_PREFS.thinkFirst,
     };
   }
   setPrefs(patch: Partial<Prefs>): void {

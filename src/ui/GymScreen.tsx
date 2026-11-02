@@ -1,12 +1,14 @@
 "use client";
 
 import { useMemo, useState, useSyncExternalStore } from "react";
-import { GYM_DRILLS, GYM_TEXT, GYM_TYPE_ORDER } from "@/content";
+import { GYM_DRILLS, GYM_TEXT, GYM_TYPE_ORDER, PRINCIPLES_TEXT, principleById } from "@/content";
 import type { DrillType } from "@/content";
 import { GymSession, buildSessionDrills, drillsFromPositions, percent } from "@/features/gym";
 import type { GymSnapshot } from "@/features/gym";
 import { waitingForPerson } from "@/features/progress";
+import { principleOfDrill } from "@/features/principles";
 import { Board } from "./Board";
+import { PrincipleChip } from "./PrincipleChip";
 import { Inline } from "./RichText";
 import { useProgress } from "./useProgress";
 
@@ -20,16 +22,40 @@ const CHOICE_STYLE = {
   right: "bg-good/30 text-ink ring-2 ring-good",
 } as const;
 
+/** The address does not change while the page is open, so there is nothing to subscribe to. */
+const noSubscribe = () => () => {};
+
 export function GymScreen() {
   const { snapshot, store } = useProgress();
   const [session, setSession] = useState<GymSession | null>(null);
   const [includeMine, setIncludeMine] = useState(true);
+  /** A rule of thumb to practise first, chosen on the "Rules I've learned" page (?principle=...). */
+  const search = useSyncExternalStore(
+    noSubscribe,
+    () => {
+      try {
+        return window.location.search;
+      } catch {
+        return "";
+      }
+    },
+    () => "",
+  );
+  const focus = useMemo(() => {
+    const id = new URLSearchParams(search).get("principle");
+    return id && principleById(id) ? id : undefined;
+  }, [search]);
 
   const diary = snapshot.diary;
   const mine = useMemo(() => drillsFromPositions(diary.gym.positions), [diary.gym.positions]);
 
   const start = () => {
-    const drills = buildSessionDrills({ builtIn: GYM_DRILLS, mine, includeMine: includeMine && mine.length > 0 });
+    const drills = buildSessionDrills({
+      builtIn: GYM_DRILLS,
+      mine,
+      includeMine: includeMine && mine.length > 0,
+      principleId: focus,
+    });
     setSession(
       new GymSession({
         drills,
@@ -71,6 +97,7 @@ export function GymScreen() {
       </section>
 
       <section className="space-y-3 rounded-[var(--radius-card)] bg-brand p-6 text-white shadow-lg">
+        {focus && <p className="font-semibold">{PRINCIPLES_TEXT.practising(principleById(focus)?.title ?? "")}</p>}
         <button
           type="button"
           onClick={start}
@@ -200,8 +227,11 @@ function DrillView({ session, snap, onLeave }: { session: GymSession; snap: GymS
           {GYM_TEXT.buttons.back}
         </button>
       </header>
-      <p className="inline-block rounded-full bg-brand/10 px-3 py-1 text-sm font-bold text-brand-dark">
-        {GYM_TEXT.stepLabel[drill.routineStep]}
+      <p className="flex flex-wrap items-center gap-2">
+        <span className="rounded-full bg-brand/10 px-3 py-1 text-sm font-bold text-brand-dark">
+          {GYM_TEXT.stepLabel[drill.routineStep]}
+        </span>
+        <PrincipleChip id={principleOfDrill(drill)} />
       </p>
       {drill.intro && <p className="font-semibold">{drill.intro}</p>}
       <p className="text-xl font-bold">

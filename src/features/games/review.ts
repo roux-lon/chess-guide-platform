@@ -1,6 +1,8 @@
 import { mistakeLabel } from "@/content";
 import { createGameFromSan, parsePgnMoves } from "@/rules";
 import type { GameRecord } from "@/storage";
+import type { Principle } from "@/content";
+import { brokenInGame, principleOfMistake } from "@/features/principles/principles";
 
 export interface ReviewMistake {
   /** Half-move number in the game. */
@@ -19,6 +21,8 @@ export interface ReviewMistake {
   fenBefore: string;
   /** What the coach said about the move at the time. */
   text: string;
+  /** The rule of thumb this mistake broke, if it maps to one. */
+  principleId?: string;
 }
 
 export interface Review {
@@ -29,6 +33,8 @@ export interface Review {
   totalMistakes: number;
   /** How many moves the player made. */
   playerMoves: number;
+  /** All of the player's mistakes grouped by the rule of thumb they broke, most first. */
+  byPrinciple: { principle: Principle; count: number }[];
 }
 
 /** Used for ordering when a mistake was saved without a cost. */
@@ -57,6 +63,7 @@ export function buildReview(record: GameRecord, limit = 3): Review {
       to: move.to,
       fenBefore: move.fenBefore,
       text: record.coachLog.find((entry) => entry.ply === mistake.ply)?.text ?? "",
+      ...(principleOfMistake(mistake.type) ? { principleId: principleOfMistake(mistake.type) } : {}),
     });
   }
 
@@ -66,5 +73,6 @@ export function buildReview(record: GameRecord, limit = 3): Review {
     mistakes: mistakes.slice(0, limit),
     totalMistakes: mistakes.length,
     playerMoves: history.filter((m) => m.color === record.playerColor).length,
+    byPrinciple: brokenInGame(mistakes),
   };
 }

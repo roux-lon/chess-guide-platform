@@ -5,9 +5,9 @@ import { PreferencesStore } from "./PreferencesStore";
 
 describe("preferences", () => {
   it("start with sound off and celebrations on", () => {
-    expect(DEFAULT_PREFS).toEqual({ sound: false, confetti: true });
+    expect(DEFAULT_PREFS).toEqual({ sound: false, confetti: true, thinkFirst: "sometimes" });
     const store = new PreferencesStore(new SmallStore(new FakeKeyValueStore()));
-    expect(store.getSnapshot()).toEqual({ sound: false, confetti: true });
+    expect(store.getSnapshot()).toEqual(DEFAULT_PREFS);
   });
 
   it("can be changed, tells listeners, and are remembered", () => {
@@ -16,13 +16,13 @@ describe("preferences", () => {
     const listener = vi.fn();
     store.subscribe(listener);
     store.update({ sound: true });
-    expect(store.getSnapshot()).toEqual({ sound: true, confetti: true });
+    expect(store.getSnapshot()).toEqual({ ...DEFAULT_PREFS, sound: true });
     expect(listener).toHaveBeenCalledTimes(1);
 
     const later = new PreferencesStore(new SmallStore(kv));
-    expect(later.getSnapshot()).toEqual({ sound: true, confetti: true });
+    expect(later.getSnapshot()).toEqual({ ...DEFAULT_PREFS, sound: true });
     later.update({ confetti: false });
-    expect(new SmallStore(kv).getPrefs()).toEqual({ sound: true, confetti: false });
+    expect(new SmallStore(kv).getPrefs()).toEqual({ ...DEFAULT_PREFS, sound: true, confetti: false });
   });
 
   it("picks up saved choices when loaded after the first render", () => {

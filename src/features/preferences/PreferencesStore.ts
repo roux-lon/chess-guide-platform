@@ -29,7 +29,13 @@ export class PreferencesStore {
   /** Reads the saved choices (the first client render used the defaults). */
   load(): void {
     const saved = this.small.getPrefs();
-    if (saved.sound !== this.prefs.sound || saved.confetti !== this.prefs.confetti) this.set(saved);
+    if (
+      saved.sound !== this.prefs.sound ||
+      saved.confetti !== this.prefs.confetti ||
+      saved.thinkFirst !== this.prefs.thinkFirst
+    ) {
+      this.set(saved);
+    }
   }
 
   update(patch: Partial<Prefs>): void {

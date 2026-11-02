@@ -4,7 +4,7 @@ import { GameSession } from "@/features/play/GameSession";
 import type { GameSessionOptions } from "@/features/play/GameSession";
 import type { ProgressStore } from "@/features/progress/ProgressStore";
 import type { Color } from "@/rules";
-import type { CoachingMode, GameRecord } from "@/storage";
+import type { CoachingMode, GameRecord, ThinkFirstMode } from "@/storage";
 import { newId } from "@/lib/id";
 import {
   buildActiveGame,
@@ -56,6 +56,8 @@ export interface GameFlowDeps {
   now?: () => Date;
   /** Extra options for every game's session, for example no thinking delay in tests. */
   sessionDefaults?: Partial<GameSessionOptions>;
+  /** How often to ask a think-first question; read when each game starts. Default off. */
+  thinkFirstMode?: () => ThinkFirstMode;
 }
 
 const toLevel = (value: number): BotLevel => Math.min(5, Math.max(1, Math.round(value))) as BotLevel;
@@ -333,6 +335,8 @@ export class GameFlow {
       engine: this.deps.createBotEngine(),
       // With coaching off there is no analysis engine at all.
       analysisEngine: coachingMode === "off" ? undefined : this.deps.createAnalysisEngine(),
+      thinkFirst: this.deps.thinkFirstMode?.() ?? "off",
+      onThinkingAnswer: (answer) => void this.progress.recordThinking([answer]),
       ...this.deps.sessionDefaults,
       ...options,
     });

@@ -20,6 +20,8 @@ interface DrillBase {
   /** Shown after the answer, right or wrong: the reason, in beginner words. */
   explanation: string;
   orientation?: "white" | "black";
+  /** The principle this drill trains (an id from content/principles.ts). When missing, the drill kind decides. */
+  principleId?: string;
   /** A line shown above the question. Used for drills built from the person's own games. */
   intro?: string;
 }

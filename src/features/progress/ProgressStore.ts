@@ -13,6 +13,8 @@ import {
 import { localDay } from "@/lib/date";
 import { countMistakes } from "../games/mistakes";
 import { addAnswers } from "../gym/accuracy";
+import { addThinkingAnswers } from "../thinkfirst/stats";
+import type { ThinkingTally } from "../thinkfirst/stats";
 import type { GymAnswer } from "../gym/accuracy";
 import { positionsFromGame } from "../gym/fromGames";
 import { addActivity, xpForGame, xpForLesson } from "../rewards/rewards";
@@ -192,6 +194,24 @@ export class ProgressStore {
         streak: addActivity(this.diary.streak, localDay(this.now())),
       },
       { immediate: true },
+    );
+  }
+
+  /**
+   * Remembers think-first answers (right and wrong per kind of question). Saved after a quiet
+   * moment, never per move; the game's own save writes it out at the end anyway.
+   */
+  async recordThinking(answers: readonly ThinkingTally[]): Promise<boolean> {
+    if (answers.length === 0) return true;
+    await this.load();
+    if (!this.ready) return false;
+    return this.commit(
+      {
+        ...this.diary,
+        updatedAt: this.now().toISOString(),
+        thinking: addThinkingAnswers(this.diary.thinking, answers),
+      },
+      {},
     );
   }
 

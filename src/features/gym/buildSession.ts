@@ -1,5 +1,6 @@
 import { GYM_TYPE_ORDER } from "@/content";
 import type { Drill } from "@/content";
+import { principleOfDrill } from "@/features/principles/principles";
 
 export const SESSION_SIZE = 5;
 
@@ -10,6 +11,8 @@ export interface BuildSessionInput {
   mine?: readonly Drill[];
   /** Fills up to two places with drills from the person's own games. */
   includeMine?: boolean;
+  /** Put up to three drills that train this principle first (the rest of the session is mixed). */
+  principleId?: string;
   size?: number;
   /** Returns a number in [0, 1). Injected so tests are repeatable. */
   random?: () => number;
@@ -32,6 +35,7 @@ export function buildSessionDrills({
   builtIn,
   mine = [],
   includeMine = false,
+  principleId,
   size = SESSION_SIZE,
   random = Math.random,
 }: BuildSessionInput): Drill[] {
@@ -44,6 +48,11 @@ export function buildSessionDrills({
 
   if (includeMine) {
     for (const drill of shuffled(mine, random).slice(0, Math.min(2, size))) take(drill);
+  }
+
+  if (principleId) {
+    const matching = builtIn.filter((d) => !used.has(d.id) && principleOfDrill(d) === principleId);
+    for (const drill of shuffled(matching, random).slice(0, Math.max(0, Math.min(3, size - chosen.length)))) take(drill);
   }
 
   const types = shuffled(GYM_TYPE_ORDER, random);

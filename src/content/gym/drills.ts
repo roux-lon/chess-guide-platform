@@ -87,6 +87,7 @@ const SPOT_THREAT: Drill[] = [
 const IS_IT_SAFE: Drill[] = [
   {
     id: "safe-1",
+    principleId: "dont-count-on-blunders",
     type: "isItSafe",
     routineStep: 4,
     fen: ITALIAN,
@@ -108,6 +109,7 @@ const IS_IT_SAFE: Drill[] = [
   },
   {
     id: "safe-3",
+    principleId: "best-reply",
     type: "isItSafe",
     routineStep: 4,
     fen: ITALIAN,
@@ -129,6 +131,7 @@ const IS_IT_SAFE: Drill[] = [
   },
   {
     id: "safe-5",
+    principleId: "trade-when-ahead",
     type: "isItSafe",
     routineStep: 4,
     fen: "rnbqkb1r/ppp2ppp/4pn2/3p4/3P1B2/5N2/PPP1PPPP/RN1QKB1R w KQkq - 0 4",
@@ -140,6 +143,7 @@ const IS_IT_SAFE: Drill[] = [
   },
   {
     id: "safe-6",
+    principleId: "threat-is-a-question",
     type: "isItSafe",
     routineStep: 4,
     fen: QUEEN_TAKES,
@@ -150,6 +154,7 @@ const IS_IT_SAFE: Drill[] = [
   },
   {
     id: "safe-7",
+    principleId: "best-reply",
     type: "isItSafe",
     routineStep: 4,
     fen: QUEEN_TAKES,
@@ -161,6 +166,7 @@ const IS_IT_SAFE: Drill[] = [
   },
   {
     id: "safe-8",
+    principleId: "trade-when-ahead",
     type: "isItSafe",
     routineStep: 4,
     fen: DRAGON,
@@ -211,6 +217,7 @@ const PICK_OF_THREE: Drill[] = [
   },
   {
     id: "pick-2",
+    principleId: "dont-count-on-blunders",
     type: "pickOfThree",
     routineStep: 3,
     fen: "rnbqkb1r/ppp2ppp/4pn2/3p4/3P1B2/5N2/PPP1PPPP/RN1QKB1R w KQkq - 0 4",

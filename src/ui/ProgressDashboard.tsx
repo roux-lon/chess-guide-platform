@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo } from "react";
-import { RESULT_TEXT } from "@/content";
+import { PRINCIPLES_TEXT, RESULT_TEXT } from "@/content";
 import { buildDashboard } from "@/features/games";
 import type { Dashboard } from "@/features/games";
 import { LESSONS } from "@/features/lessons";
@@ -109,6 +109,18 @@ export function DashboardView({
               <p className="rounded-[var(--radius-button)] bg-warn/20 p-3">
                 The one that keeps coming back: <strong>{mistakes.repeated.label}</strong> ({mistakes.repeated.count}{" "}
                 times lately).
+                {mistakes.repeated.principle && (
+                  <>
+                    {" "}
+                    {PRINCIPLES_TEXT.repeated(mistakes.repeated.principle.title)}{" "}
+                    <Link
+                      href={`/gym?principle=${mistakes.repeated.principle.id}`}
+                      className="font-bold text-brand underline"
+                    >
+                      {PRINCIPLES_TEXT.practice}
+                    </Link>
+                  </>
+                )}
               </p>
             )}
 

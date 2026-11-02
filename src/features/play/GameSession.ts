@@ -7,7 +7,11 @@ import { createGame, createGameFromSan } from "@/rules";
 import type { Color, Game, GameStatus, MoveInfo, PromotionPiece, Square } from "@/rules";
 import { DEFAULT_LEVEL } from "@/engine";
 import type { BotLevel, EngineAdapter } from "@/engine";
-import type { CoachLogRecord, CoachingMode, MistakeRecord } from "@/storage";
+import type { CoachLogRecord, CoachingMode, MistakeRecord, ThinkFirstMode } from "@/storage";
+import { THINK_FIRST_TEXT } from "@/content";
+import type { ThinkQuestionType } from "@/content";
+import { chooseQuestion, judgeAnswer } from "@/features/thinkfirst";
+import type { ThinkQuestion, ThinkVerdict } from "@/features/thinkfirst";
 import { openingView } from "@/features/opening";
 import type { OpeningView } from "@/features/opening";
 import { dangerHighlights } from "./dangers";
@@ -67,6 +71,30 @@ export interface GameSnapshot {
   takeBackOffer?: TakeBackOffer;
   /** Opening practice only: the checklist, the next step and a note on the last move. */
   opening?: OpeningView;
+  /** Think-first mode: a question before my move, or its answer. Never blocks the board. */
+  thinking?: ThinkingView;
+}
+
+/** A think-first question on screen. The board stays playable the whole time. */
+export interface ThinkingView {
+  type: ThinkQuestionType;
+  prompt: string;
+  /** Which step of the thinking routine it trains. */
+  trains: string;
+  options: { label: string; state: "idle" | "right" | "wrong" }[];
+  /** Set once answered. */
+  verdict?: { correct: boolean; headline: string; reason: string };
+  /** Shown on the board after the answer. */
+  dangerSquares: string[];
+  arrows: { from: string; to: string; color: "green" | "red" | "blue" }[];
+}
+
+/** One answered think-first question, for the diary. */
+export interface ThinkingAnswer {
+  type: ThinkQuestionType;
+  correct: boolean;
+  /** The principle the question trains. */
+  principleId?: string;
 }
 
 /** What is needed to continue a saved game. */
@@ -105,6 +133,12 @@ export interface GameSessionOptions {
   practice?: boolean;
   /** Opening practice: the snapshot carries the opening checklist. Not saved as a game. */
   opening?: boolean;
+  /** How often to ask a question before my move. Default off. Never asked in practice, opening practice or with coaching off. */
+  thinkFirst?: ThinkFirstMode;
+  /** Random numbers for choosing questions; injected so tests are repeatable. */
+  random?: () => number;
+  /** Called once for each question that is answered (not for skipped ones). */
+  onThinkingAnswer?: (answer: ThinkingAnswer) => void;
 }
 
 const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
@@ -140,6 +174,12 @@ export class GameSession {
   private hintLoading = false;
   /** Bumped when the position changes, so a slow hint lookup is thrown away. */
   private hintToken = 0;
+  private readonly thinkFirst: ThinkFirstMode;
+  private readonly random: () => number;
+  private readonly onThinkingAnswer?: (answer: ThinkingAnswer) => void;
+  private question?: ThinkQuestion;
+  private questionAnswer?: { index: number; verdict: ThinkVerdict };
+  private lastQuestionType?: ThinkQuestionType;
 
   constructor({
     engine,
@@ -155,6 +195,9 @@ export class GameSession {
     restore,
     practice = false,
     opening = false,
+    thinkFirst = "off",
+    random = Math.random,
+    onThinkingAnswer,
   }: GameSessionOptions) {
     this.gameId = gameId ?? newId();
     this.engine = engine;
@@ -164,6 +207,9 @@ export class GameSession {
     this.coachingMode = coachingMode;
     this.practice = practice;
     this.opening = opening;
+    this.thinkFirst = practice || opening || coachingMode === "off" ? "off" : thinkFirst;
+    this.random = random;
+    this.onThinkingAnswer = onThinkingAnswer;
     this.botDelayMs = botDelayMs;
     this.coachWaitMs = coachWaitMs;
 
@@ -220,6 +266,28 @@ export class GameSession {
     this.engine.init().catch(() => {});
     this.coach?.warmUp();
     if (!this.botThinking) void this.maybeBotMove();
+    this.maybeAsk();
+  }
+
+  /** Answers the think-first question with one of its options. Counted once. */
+  answerThinking(index: number): void {
+    const question = this.question;
+    if (!question || this.questionAnswer || !question.options[index]) return;
+    const verdict = judgeAnswer(question, index);
+    this.questionAnswer = { index, verdict };
+    this.onThinkingAnswer?.({
+      type: question.type,
+      correct: verdict.correct,
+      ...(question.principleId ? { principleId: question.principleId } : {}),
+    });
+    this.emit();
+  }
+
+  /** Puts the question away without answering. The board was never locked. */
+  skipThinking(): void {
+    if (!this.question) return;
+    this.clearQuestion();
+    this.emit();
   }
 
   /** Changes bot strength. If the bot is mid-thought it starts over at the new level. */
@@ -267,6 +335,7 @@ export class GameSession {
     this.botThinking = false;
     this.pendingPromotion = undefined;
     this.resigned = true;
+    this.clearQuestion();
     this.resetHints();
     this.emit();
   }
@@ -283,6 +352,7 @@ export class GameSession {
     this.pendingPromotion = undefined;
     this.pendingAnalysis = undefined;
     this.error = undefined;
+    this.clearQuestion();
     this.resetHints();
     if (this.game.undo()) {
       while (this.game.turn() !== this.playerColor && this.game.undo()) {
@@ -346,6 +416,26 @@ export class GameSession {
     return !this.botThinking && !this.isOver() && this.game.turn() === this.playerColor;
   }
 
+  /** At the start of my turn: maybe ask a question that the rules layer can check. */
+  private maybeAsk(): void {
+    if (this.thinkFirst === "off" || !this.isHumanTurn() || this.question) return;
+    const question = chooseQuestion({
+      fen: this.game.fen(),
+      mode: this.thinkFirst,
+      lastType: this.lastQuestionType,
+      random: this.random,
+    });
+    if (!question) return;
+    this.question = question;
+    this.lastQuestionType = question.type;
+    this.emit();
+  }
+
+  private clearQuestion(): void {
+    this.question = undefined;
+    this.questionAnswer = undefined;
+  }
+
   private resetHints(): void {
     this.hintToken++;
     this.hints = [];
@@ -371,6 +461,7 @@ export class GameSession {
     const fenBefore = this.game.fen();
     if (!this.game.tryMove(from, to, promotion)) return this.emit();
     this.error = undefined;
+    this.clearQuestion();
     this.resetHints();
     this.pendingAnalysis = this.analyze(fenBefore, from, to, promotion);
     this.emit();
@@ -412,6 +503,7 @@ export class GameSession {
     }
     this.botThinking = false;
     this.emit();
+    this.maybeAsk();
   }
 
   private emit(): void {
@@ -469,6 +561,35 @@ export class GameSession {
         this.hints.length < COACH_CONFIG.hintTierCount,
       takeBackOffer: this.buildTakeBackOffer(moves),
       ...(this.opening ? { opening: openingView(this.game.fen(), this.playerColor, moves) } : {}),
+      ...(this.question && humanTurn ? { thinking: this.buildThinking(this.question) } : {}),
+    };
+  }
+
+  private buildThinking(question: ThinkQuestion): ThinkingView {
+    const answer = this.questionAnswer;
+    const best = answer ? question.options.findIndex((_, i) => judgeAnswer(question, i).correct) : -1;
+    const text = THINK_FIRST_TEXT;
+    return {
+      type: question.type,
+      prompt: question.prompt,
+      trains: text.trains[question.type],
+      options: question.options.map((o, i) => ({
+        label: o.label,
+        state: !answer ? "idle" : i === best ? "right" : i === answer.index ? "wrong" : "idle",
+      })),
+      verdict: answer
+        ? {
+            correct: answer.verdict.correct,
+            headline: answer.verdict.correct ? text.right : text.wrong,
+            reason: answer.verdict.reason,
+          }
+        : undefined,
+      dangerSquares: answer?.verdict.dangerSquares ?? [],
+      arrows: answer
+        ? answer.verdict.arrows
+        : question.type === "safestMove"
+          ? question.options.flatMap((o) => (o.move ? [{ from: o.move.from, to: o.move.to, color: "blue" as const }] : []))
+          : [],
     };
   }
 }
